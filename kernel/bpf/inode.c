@@ -182,6 +182,23 @@ bpf_lookup(struct inode *dir, struct dentry *dentry, unsigned flags)
 	if (strchr(dentry->d_name.name, '.'))
 		return ERR_PTR(-EPERM);
 	return simple_lookup(dir, dentry, flags);
+
+static int bpf_link(struct dentry *old_dentry, struct inode *dir,
+		    struct dentry *new_dentry)
+{
+	if (bpf_dname_reserved(new_dentry))
+		return -EPERM;
+
+	return simple_link(old_dentry, dir, new_dentry);
+}
+
+static int bpf_rename(struct inode *old_dir, struct dentry *old_dentry,
+		      struct inode *new_dir, struct dentry *new_dentry)
+{
+	if (bpf_dname_reserved(new_dentry))
+		return -EPERM;
+
+	return simple_rename(old_dir, old_dentry, new_dir, new_dentry);
 }
 
 static const struct inode_operations bpf_dir_iops = {
@@ -191,6 +208,8 @@ static const struct inode_operations bpf_dir_iops = {
 	.rmdir		= simple_rmdir,
 	.rename2	= simple_rename,
 	.link		= simple_link,
+	.rename		= bpf_rename,
+	.link		= bpf_link,
 	.unlink		= simple_unlink,
 };
 
