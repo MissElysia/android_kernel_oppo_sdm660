@@ -2084,6 +2084,7 @@ int __sys_sendmmsg(int fd, struct mmsghdr __user *mmsg, unsigned int vlen,
 	struct compat_mmsghdr __user *compat_entry;
 	struct msghdr msg_sys;
 	struct used_address used_address;
+	unsigned int oflags = flags;
 
 	if (vlen > UIO_MAXIOV)
 		vlen = UIO_MAXIOV;
@@ -2098,8 +2099,12 @@ int __sys_sendmmsg(int fd, struct mmsghdr __user *mmsg, unsigned int vlen,
 	entry = mmsg;
 	compat_entry = (struct compat_mmsghdr __user *)mmsg;
 	err = 0;
+	flags |= MSG_BATCH;
 
 	while (datagrams < vlen) {
+		if (datagrams == vlen - 1)
+			flags = oflags;
+
 		if (MSG_CMSG_COMPAT & flags) {
 			err = ___sys_sendmsg(sock, (struct user_msghdr __user *)compat_entry,
 					     &msg_sys, flags, &used_address, MSG_EOR);
