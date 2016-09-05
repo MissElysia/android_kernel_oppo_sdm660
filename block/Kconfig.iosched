@@ -50,6 +50,45 @@ config CFQ_GROUP_IOSCHED
 	---help---
 	  Enable group IO scheduling in CFQ.
 
+config IOSCHED_BFQ
+	tristate "BFQ I/O scheduler"
+	default n
+	---help---
+	The BFQ I/O scheduler distributes bandwidth among all
+	processes according to their weights, regardless of the
+	device parameters and with any workload. It also guarantees
+	a low latency to interactive and soft real-time applications.
+	Details in Documentation/block/bfq-iosched.txt
+
+config BFQ_GROUP_IOSCHED
+	bool "BFQ hierarchical scheduling support"
+	depends on IOSCHED_BFQ && BLK_CGROUP
+	default n
+	---help---
+
+	Enable hierarchical scheduling in BFQ, using the blkio
+	(cgroups-v1) or io (cgroups-v2) controller.
+
+config IOSCHED_ANXIETY
+	tristate "Anxiety I/O Scheduler"
+	default y
+	---help---
+	  Anxiety is a low-latency I/O scheduler designed for use in
+	  embedded devices with flash storage. It attempts to provide
+	  unfair request bias, batching synchronous requests together
+	  at the expense of delaying asyncrhonous requests. By
+	  definition, synchronous requests are essentially "holding up"
+	  the current processes until they are dispatched. By biasing
+	  and batching synchronous requests, process initialization is
+	  expedited.
+
+config IOSCHED_ZEN
+	tristate "Zen I/O scheduler"
+	default y
+	---help---
+	  FCFS, dispatches are back-inserted, deadlines ensure fairness.
+	  Should work best with devices where there is no travel delay.
+
 choice
 	prompt "Default I/O scheduler"
 	default DEFAULT_CFQ
@@ -66,6 +105,9 @@ choice
 	config DEFAULT_NOOP
 		bool "No-op"
 
+	config DEFAULT_ZEN
+		bool "ZEN" if IOSCHED_ZEN=y
+
 endchoice
 
 config DEFAULT_IOSCHED
@@ -73,6 +115,7 @@ config DEFAULT_IOSCHED
 	default "deadline" if DEFAULT_DEADLINE
 	default "cfq" if DEFAULT_CFQ
 	default "noop" if DEFAULT_NOOP
+	default "zen" if DEFAULT_ZEN
 
 endmenu
 
