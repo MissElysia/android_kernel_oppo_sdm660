@@ -75,6 +75,7 @@ slow:
 	inode = new_inode_pseudo(mnt->mnt_sb);
 	if (!inode) {
 		ns->ops->put(ns);
+		mntput(mnt);
 		return ERR_PTR(-ENOMEM);
 	}
 	inode->i_ino = ns->inum;
@@ -96,6 +97,7 @@ slow:
 	if (d) {
 		d_delete(dentry);	/* make sure ->d_prune() does nothing */
 		dput(dentry);
+		mntput(mnt);
 		cpu_relax();
 		return ERR_PTR(-EAGAIN);
 	}
@@ -169,10 +171,6 @@ static long ns_ioctl(struct file *filp, unsigned int ioctl,
 	switch (ioctl) {
 	case NS_GET_USERNS:
 		return open_related_ns(ns, ns_get_owner);
-	case NS_GET_PARENT:
-		if (!ns->ops->get_parent)
-			return -EINVAL;
-		return open_related_ns(ns, ns->ops->get_parent);
 	default:
 		return -ENOTTY;
 	}
