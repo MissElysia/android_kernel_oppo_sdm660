@@ -60,6 +60,8 @@ struct wireless_dev;
 /* 802.15.4 specific */
 struct wpan_dev;
 struct mpls_dev;
+struct bpf_prog;
+struct xdp_buff;
 
 void netdev_set_default_ethtool_ops(struct net_device *dev,
 				    const struct ethtool_ops *ops);
@@ -1059,6 +1061,18 @@ typedef u16 (*select_queue_fallback_t)(struct net_device *dev,
  *	This function is used to get egress tunnel information for given skb.
  *	This is useful for retrieving outer tunnel header parameters while
  *	sampling packet.
+ * void (*ndo_set_rx_headroom)(struct net_device *dev, int needed_headroom);
+ *	This function is used to specify the headroom that the skb must
+ *	consider when allocation skb during packet reception. Setting
+ *	appropriate rx headroom value allows avoiding skb head copy on
+ *	forward. Setting a negative value reset the rx headroom to the
+ *	default value.
+ * int (*ndo_xdp)(struct net_device *dev, struct netdev_xdp *xdp);
+ *	This function is used to set or query state related to XDP on the
+ *	netdevice. See definition of enum xdp_netdev_command for details.
+ * int (*ndo_xdp_xmit)(struct net_device *dev, struct xdp_buff *xdp);
+ *	This function is used to submit a XDP packet for transmit on a
+ *	netdevice.
  *
  */
 struct net_device_ops {
@@ -1236,6 +1250,12 @@ struct net_device_ops {
 							 bool proto_down);
 	int			(*ndo_fill_metadata_dst)(struct net_device *dev,
 						       struct sk_buff *skb);
+	void			(*ndo_set_rx_headroom)(struct net_device *dev,
+						       int needed_headroom);
+	int			(*ndo_xdp)(struct net_device *dev,
+					   struct netdev_xdp *xdp);
+	int			(*ndo_xdp_xmit)(struct net_device *dev,
+						struct xdp_buff *xdp);
 };
 
 /**
