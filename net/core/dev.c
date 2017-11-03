@@ -6327,6 +6327,38 @@ int dev_change_proto_down(struct net_device *dev, bool proto_down)
 EXPORT_SYMBOL(dev_change_proto_down);
 
 /**
+ *	dev_change_xdp_fd - set or clear a bpf program for a device rx path
+ *	@dev: device
+ *	@fd: new program fd or negative value to clear
+ *
+ *	Set or clear a bpf program for a device
+ */
+int dev_change_xdp_fd(struct net_device *dev, int fd)
+{
+	const struct net_device_ops *ops = dev->netdev_ops;
+	struct bpf_prog *prog = NULL;
+	struct netdev_bpf xdp = {};
+	int err;
+
+	if (!ops->ndo_bpf)
+		return -EOPNOTSUPP;
+	if (fd >= 0) {
+		prog = bpf_prog_get_type(fd, BPF_PROG_TYPE_XDP);
+		if (IS_ERR(prog))
+			return PTR_ERR(prog);
+	}
+
+	xdp.command = XDP_SETUP_PROG;
+	xdp.prog = prog;
+	err = ops->ndo_bpf(dev, &xdp);
+	if (err < 0 && prog)
+		bpf_prog_put(prog);
+
+	return err;
+}
+EXPORT_SYMBOL(dev_change_xdp_fd);
+
+/**
  *	dev_new_index	-	allocate an ifindex
  *	@net: the applicable net namespace
  *
