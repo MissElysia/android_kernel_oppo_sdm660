@@ -511,13 +511,22 @@ int rcu_read_lock_bh_held(void);
  * CONFIG_DEBUG_LOCK_ALLOC, this assumes we are in an RCU-sched read-side
  * critical section unless it can prove otherwise.
  */
+#ifdef CONFIG_PREEMPT_COUNT
 int rcu_read_lock_sched_held(void);
+#else /* #ifdef CONFIG_PREEMPT_COUNT */
+static inline int rcu_read_lock_sched_held(void)
+{
+	return 1;
+}
+#endif /* #else #ifdef CONFIG_PREEMPT_COUNT */
+int rcu_read_lock_any_held(void);
 
 #else /* #ifdef CONFIG_DEBUG_LOCK_ALLOC */
 
 # define rcu_lock_acquire(a)		do { } while (0)
 # define rcu_lock_release(a)		do { } while (0)
 
+#ifdef CONFIG_PREEMPT_COUNT
 static inline int rcu_read_lock_held(void)
 {
 	return 1;
@@ -532,6 +541,18 @@ static inline int rcu_read_lock_sched_held(void)
 {
 	return !preemptible();
 }
+#else /* #ifdef CONFIG_PREEMPT_COUNT */
+static inline int rcu_read_lock_sched_held(void)
+{
+	return 1;
+}
+#endif /* #else #ifdef CONFIG_PREEMPT_COUNT */
+
+static inline int rcu_read_lock_any_held(void)
+{
+	return !preemptible();
+}
+
 #endif /* #else #ifdef CONFIG_DEBUG_LOCK_ALLOC */
 
 #ifdef CONFIG_PROVE_RCU
