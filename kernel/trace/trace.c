@@ -1588,6 +1588,8 @@ static int trace_save_cmdline(struct task_struct *tsk)
 
 	tpid = tsk->pid & (PID_MAX_DEFAULT - 1);
 
+	tpid = tsk->pid & (PID_MAX_DEFAULT - 1);
+
 	preempt_disable();
 	/*
 	 * It's not the end of the world if we don't get
