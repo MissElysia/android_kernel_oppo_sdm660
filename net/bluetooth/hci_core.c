@@ -1664,7 +1664,7 @@ int hci_dev_do_close(struct hci_dev *hdev)
 {
 	bool auto_off;
 
-	BT_DBG("%s %pK", hdev->name, hdev);
+	BT_DBG("%s %p", hdev->name, hdev);
 
 	cancel_delayed_work(&hdev->power_off);
 
