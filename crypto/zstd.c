@@ -25,6 +25,8 @@
 uint compression_level = 1;
 module_param(compression_level, uint, 0644);
 
+#define ZSTD_DEF_LEVEL	1
+
 struct zstd_ctx {
 	zstd_cctx *cctx;
 	zstd_dctx *dctx;
