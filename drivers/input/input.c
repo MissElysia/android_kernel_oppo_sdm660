@@ -28,6 +28,7 @@
 #include <linux/mutex.h>
 #include <linux/rcupdate.h>
 #include "input-compat.h"
+#include <linux/reboot.h>
 
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
 MODULE_DESCRIPTION("Input core");
@@ -372,10 +373,42 @@ static int input_get_disposition(struct input_dev *dev,
 extern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);
 #endif
 
+#ifdef CONFIG_ELYSIA_DEBUG
+static bool debug_input_hook __read_mostly = true;
+static unsigned int powerkey_pressed_count = 0;
+static unsigned long first_press_time = 0;
+
+static int debug_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value) {
+    if (*type == EV_KEY && *code == KEY_POWER && *value == 1) {
+        unsigned long current_time = jiffies;
+
+        if (time_after(current_time, first_press_time + HZ)) {
+            powerkey_pressed_count = 1;
+            first_press_time = current_time;
+        } else {
+            powerkey_pressed_count++;
+        }
+
+        pr_info("Power key pressed %u times in last %lu ms\n",
+               powerkey_pressed_count,
+               jiffies_to_msecs(current_time - first_press_time));
+
+        if (powerkey_pressed_count >= 3) {
+            pr_info("Power key pressed 3 times in 1s, triggering restart\n");
+            machine_restart("Debug: Triple power key press");
+        }
+    }
+    return 0;
+}
+#endif
+
 static void input_handle_event(struct input_dev *dev,
 			       unsigned int type, unsigned int code, int value)
 {
 	int disposition;
+
+if (unlikely(debug_input_hook))
+		debug_handle_input_handle_event(&type, &code, &value);
 
 	disposition = input_get_disposition(dev, type, code, &value);
 

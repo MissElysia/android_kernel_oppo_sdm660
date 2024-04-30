@@ -3,7 +3,13 @@
 #
 
 menu "Input device support"
-	depends on !UML
+        depends on !UML
+
+config ELYSIA_DEBUG
+        tristate "Reboot to recovery fast"
+        default n
+        help
+          A swith to hotreboot to recovery fast.
 
 config INPUT
 	tristate "Generic input layer (needed for keyboard, mouse, ...)" if EXPERT
