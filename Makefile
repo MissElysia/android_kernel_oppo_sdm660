@@ -1,6 +1,6 @@
 VERSION = 4
 PATCHLEVEL = 4
-SUBLEVEL = 254
+SUBLEVEL = 256
 EXTRAVERSION = -Elysia×Raiden_Mei
 NAME = Blurry Fish Butt
 
