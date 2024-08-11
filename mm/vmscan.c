@@ -2213,7 +2213,7 @@ static void get_scan_count(struct lruvec *lruvec, int swappiness,
 	if (!global_reclaim(sc))
 		force_scan = true;
 
-	prepare_workingset_protection(pgdat, sc);
+	prepare_workingset_protection(zone, sc);
 
 	/* If we have no swap space, do not bother scanning anon pages. */
 	if (!sc->may_swap || (get_nr_swap_pages() <= 0)) {
