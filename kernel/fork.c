@@ -1690,6 +1690,8 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 
 	proc_fork_connector(p);
 	cgroup_post_fork(p, cgrp_ss_priv);
+	sched_post_fork(p);
+	perf_event_fork(p);
 	threadgroup_change_end(current);
 	perf_event_fork(p);
 
