@@ -7310,6 +7310,7 @@ boosted_cpu_util(int cpu)
 static inline unsigned long
 boosted_task_util(struct task_struct *task)
 {
+    struct task_struct *p;
 #ifdef CONFIG_UCLAMP_TASK_GROUP
 	unsigned long util = task_util(p);
 	unsigned long util_min = uclamp_eff_value(p, UCLAMP_MIN);
