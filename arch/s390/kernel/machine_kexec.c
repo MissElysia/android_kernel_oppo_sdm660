@@ -26,6 +26,7 @@
 #include <asm/asm-offsets.h>
 #include <asm/os_info.h>
 #include <asm/switch_to.h>
+#include <linux/set_memory.h>
 
 typedef void (*relocate_kernel_t)(kimage_entry_t *, unsigned long);
 

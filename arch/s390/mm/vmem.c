@@ -16,6 +16,7 @@
 #include <asm/setup.h>
 #include <asm/tlbflush.h>
 #include <asm/sections.h>
+#include <linux/set_memory.h>
 
 static DEFINE_MUTEX(vmem_mutex);
 
