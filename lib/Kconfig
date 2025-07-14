@@ -250,14 +250,6 @@ config ZSTD_DECOMPRESS
 	select XXHASH
 	tristate
 
-config ZSTD_COMPRESS
-	select XXHASH
-	tristate
-
-config ZSTD_DECOMPRESS
-	select XXHASH
-	tristate
-
 source "lib/xz/Kconfig"
 
 #

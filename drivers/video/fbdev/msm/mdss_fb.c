@@ -3097,13 +3097,7 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 	}
 
 	/* Reset the backlight only if the panel was off */
-	if (mdss_panel_is_power_off(cur_power_state) || mdss_panel_is_power_on_lp (cur_power_state) ) {
-		if(is_ffl_enable == FFL_TRIGGLE_CONTROL) {
-				mutex_lock(&ffl_lock);
-				atomic_inc(&ffl_pending);
-				wake_up_all(&ffl_wait_q);
-				mutex_unlock(&ffl_lock);
-		}
+	if (mdss_panel_is_power_off(cur_power_state)) {
 		mutex_lock(&mfd->bl_lock);
 		if (!mfd->allow_bl_update) {
 			mfd->allow_bl_update = true;

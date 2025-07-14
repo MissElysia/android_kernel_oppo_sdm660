@@ -1898,7 +1898,7 @@ static int ak4376_i2c_probe(struct i2c_client *i2c,
             ak4376->priv_pdn_en);
     }
 
-	if (is_project(OPPO_16051) || is_project(OPPO_17011) || is_project(OPPO_17021)) {
+	if (is_project(OPPO_16051) || is_project(OPPO_17011) || is_project(OPPO_17021) || is_project(OPPO_16103) ||  is_project(OPPO_16118)) {
 		#ifndef VENDOR_EDIT
 		/* Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDAC, 2017/03/22,
 		* Modify for change LDO regulator */

@@ -22,6 +22,7 @@
 #include <linux/spmi.h>
 #include <linux/platform_device.h>
 #include <linux/spinlock.h>
+#include <linux/alarmtimer.h>
 
 /* RTC/ALARM Register offsets */
 #define REG_OFFSET_ALARM_RW	0x40
@@ -301,10 +302,6 @@ qpnp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alarm)
 	}
 
 	rtc_tm_to_time(&rtc_tm, &secs_rtc);
-#ifdef VENDOR_EDIT
-//Modified by Tong.han@BSP.group.TP 2014-08-02
-	printk("----------qpnp_rtc_set_alarm secs=%ld  secs_rtc=%ld diff=%ld\n",secs,secs_rtc,secs-secs_rtc);
-#endif /*VENDOR_EDIT*/
 	if (secs < secs_rtc) {
 		dev_err(dev, "Trying to set alarm in the past\n");
 		return -EINVAL;
@@ -610,6 +607,9 @@ static int qpnp_rtc_probe(struct platform_device *pdev)
 		rc = PTR_ERR(rtc_dd->rtc);
 		goto fail_rtc_enable;
 	}
+
+	/* Init power_on_alarm after adding rtc device */
+	power_on_alarm_init();
 
 	/* Request the alarm IRQ */
 	rc = request_any_context_irq(rtc_dd->rtc_alarm_irq,

@@ -22,5 +22,6 @@ config OPPO_DEVICE_IFNO
 source "drivers/soc/oppo/oppo_project/Kconfig"
 
 source "drivers/soc/oppo/oppo_devinfo/Kconfig"
+
 #endif /* VENDOR_EDIT */
 

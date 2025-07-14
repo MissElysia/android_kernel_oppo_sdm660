@@ -275,17 +275,6 @@ int pil_do_ramdump(struct pil_desc *desc,
 	struct ramdump_segment *ramdump_segs, *s;
 	void __iomem *offset;
 
-	#ifdef VENDOR_EDIT
-	//Wentiam.Mai@PSW.NW.EM.1248599, 2018/01/25
-	//Add for customized subsystem ramdump to skip generate dump cause by SAU
-	if (SKIP_GENERATE_RAMDUMP) {
-		pil_err(desc, "%s: Skip ramdump cuase by ap normal trigger.\n %s",
-			__func__, desc->name);
-		SKIP_GENERATE_RAMDUMP = false;
-		return -1;
-	}
-	#endif
-
 	memcpy(&offset, &priv->minidump_ss, sizeof(priv->minidump_ss));
 	/*
 	 * Collect minidump if smem base is initialized,

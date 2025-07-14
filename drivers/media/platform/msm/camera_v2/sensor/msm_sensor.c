@@ -433,6 +433,7 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 		pr_err("%s: %s: read id failed\n", __func__, sensor_name);
 		return rc;
 	}
+
 	pr_debug("%s: read id: 0x%x expected id 0x%x:\n",
 			__func__, chipid, slave_info->sensor_id);
 	#ifndef VENDOR_EDIT

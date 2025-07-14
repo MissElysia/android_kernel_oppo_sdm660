@@ -256,10 +256,6 @@ static int32_t msm_flash_i2c_init(
 			flash_ctrl->power_setting_array.power_down_setting_a,
 			power_setting_array32->power_down_setting_a,
 			flash_ctrl->power_setting_array.size_down);
-
-		kfree(power_setting_array32);
-		power_setting_array32 = NULL;
-
 	} else
 #endif
 	if (copy_from_user(&flash_ctrl->power_setting_array,

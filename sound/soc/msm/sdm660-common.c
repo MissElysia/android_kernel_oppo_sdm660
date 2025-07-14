@@ -3040,11 +3040,6 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	int ret = -EINVAL, id;
 	const struct of_device_id *match;
 
-	#ifdef VENDOR_EDIT
-	/* Jianfeng.Qiu@PSW.MM.AudioDriver.Machine,2017/09/21, Add for log*/
-	pr_info("%s: *** Enter\n", __func__);
-	#endif /* VENDOR_EDIT */
-
 	pdata = devm_kzalloc(&pdev->dev,
 			     sizeof(struct msm_asoc_mach_data),
 			     GFP_KERNEL);
@@ -3158,11 +3153,6 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	}
 	if (pdata->snd_card_val != INT_SND_CARD)
 		msm_ext_register_audio_notifier(pdev);
-
-	#ifdef VENDOR_EDIT
-	/* Jianfeng.Qiu@PSW.MM.AudioDriver.Machine,2017/09/21, Add for log*/
-	pr_info("%s: sond card register success.\n", __func__);
-	#endif /* VENDOR_EDIT */
 
 	return 0;
 err:

@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1405,22 +1405,6 @@ int adreno_dispatcher_queue_cmds(struct kgsl_device_private *dev_priv,
 
 	user_ts = *timestamp;
 
-	/*
-	 * If there is only one drawobj in the array and it is of
-	 * type SYNCOBJ_TYPE, skip comparing user_ts as it can be 0
-	 */
-	if (!(count == 1 && drawobj[0]->type == SYNCOBJ_TYPE) &&
-		(drawctxt->base.flags & KGSL_CONTEXT_USER_GENERATED_TS)) {
-		/*
-		 * User specified timestamps need to be greater than the last
-		 * issued timestamp in the context
-		 */
-		if (timestamp_cmp(drawctxt->timestamp, user_ts) >= 0) {
-			spin_unlock(&drawctxt->lock);
-			return -ERANGE;
-		}
-	}
-
 	for (i = 0; i < count; i++) {
 
 		switch (drawobj[i]->type) {
@@ -2062,7 +2046,6 @@ replay:
 static void do_header_and_snapshot(struct kgsl_device *device,
 		struct adreno_ringbuffer *rb, struct kgsl_drawobj_cmd *cmdobj)
 {
-
 	struct kgsl_drawobj *drawobj = DRAWOBJ(cmdobj);
 
 	/* Always dump the snapshot on a non-drawobj failure */
@@ -2364,7 +2347,6 @@ static int adreno_dispatch_retire_drawqueue(struct adreno_device *adreno_dev,
 static void _adreno_dispatch_check_timeout(struct adreno_device *adreno_dev,
 		struct adreno_dispatcher_drawqueue *drawqueue)
 {
-
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	struct kgsl_drawobj *drawobj =
 			DRAWOBJ(drawqueue->cmd_q[drawqueue->head]);

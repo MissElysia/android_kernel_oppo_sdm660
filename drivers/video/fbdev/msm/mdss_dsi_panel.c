@@ -2260,13 +2260,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-#ifndef VENDOR_EDIT
-//Guoqiang.Jiang@PSW.MM.Display.LCD.Stability, 2017/01/24,
-//modify for panel debug
 	pr_debug("%s: ctrl=%pK ndx=%d\n", __func__, ctrl, ctrl->ndx);
-#else /*VENDOR_EDIT*/
-	pr_err("%s: ctrl=%pK ndx=%d\n", __func__, ctrl, ctrl->ndx);
-#endif /*VEDNOR_EDIT*/
 
 	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
@@ -2295,13 +2289,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 #endif /*VENDOR_EDIT*/
 
 end:
-#ifndef VENDOR_EDIT
-//Guoqiang.Jiang@PSW.MM.Display.LCD.Stability, 2017/01/24,
-//modify for panel debug
 	pr_debug("%s:-\n", __func__);
-#else /*VENDOR_EDIT*/
-	pr_err("%s:-\n", __func__);
-#endif /*VEDNOR_EDIT*/
 	return 0;
 }
 

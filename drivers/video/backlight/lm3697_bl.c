@@ -637,6 +637,7 @@ static int lm3697_bl_probe(struct i2c_client *client,
     if (ret < 0) {
         dev_err(&client->dev, "fail : init chip\n");
         //YongPeng.Yi@MultiMedia.Display.LCD.Stability, 2017/03/08,
+        //add for bl key log
         goto error_enable;
     }
 

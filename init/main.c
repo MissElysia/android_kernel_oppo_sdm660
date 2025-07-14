@@ -89,7 +89,6 @@
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
 #include <soc/qcom/boot_stats.h>
-
 static int kernel_init(void *);
 
 extern void init_IRQ(void);
@@ -1028,6 +1027,7 @@ static noinline void __init kernel_init_freeable(void)
 	page_alloc_init_late();
 
 	do_basic_setup();
+
 	/* Open the /dev/console on the rootfs, this should never fail */
 	if (sys_open((const char __user *) "/dev/console", O_RDWR, 0) < 0)
 		pr_err("Warning: unable to open an initial console.\n");

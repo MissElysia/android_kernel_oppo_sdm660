@@ -70,11 +70,6 @@
 
 #include "locking/rtmutex_common.h"
 
-#ifdef VENDOR_EDIT
-// Liujie.Xie@TECH.Kernel.Sched, 2019/10/08, add for ui first
-#include <linux/oppocfs/oppo_cfs_futex.h>
-#endif /* VENDOR_EDIT */
-
 /*
  * READ this before attempting to hack on futexes!
  *
@@ -235,10 +230,6 @@ struct futex_q {
 	struct plist_node list;
 
 	struct task_struct *task;
-#ifdef VENDOR_EDIT
-// Liujie.Xie@TECH.Kernel.Sched, 2019/10/08, add for ui first
-    struct task_struct *wait_for;
-#endif
 	spinlock_t *lock_ptr;
 	union futex_key key;
 	struct futex_pi_state *pi_state;
@@ -1435,13 +1426,6 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 	if (!hb_waiters_pending(hb))
 		goto out_put_key;
 
-#ifdef VENDOR_EDIT
-// Liujie.Xie@TECH.Kernel.Sched, 2019/10/08, add for ui first
-    if (sysctl_uifirst_enabled) {
-        futex_dynamic_ux_dequeue(current);
-    }
-#endif /* VENDOR_EDIT */
-
 	spin_lock(&hb->lock);
 
 	plist_for_each_entry_safe(this, next, &hb->chain, list) {
@@ -2057,12 +2041,6 @@ static inline void queue_me(struct futex_q *q, struct futex_hash_bucket *hb)
 	 * the others are woken last, in FIFO order.
 	 */
 	prio = min(current->normal_prio, MAX_RT_PRIO);
-#ifdef VENDOR_EDIT
-// Liujie.Xie@TECH.Kernel.Sched, 2019/10/08, add for ui first
-    if (sysctl_uifirst_enabled && test_task_ux(current)) {
-        prio = min(current->normal_prio, MAX_RT_PRIO - 1);
-    }
-#endif /* VENDIR_EIDT */
 
 	plist_node_init(&q->list, prio);
 	plist_add(&q->list, &hb->chain);
@@ -2429,14 +2407,8 @@ out:
 	return ret;
 }
 
-#ifdef VENDOR_EDIT
-// Liujie.Xie@TECH.Kernel.Sched, 2019/10/08, add for ui first
-static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
-                ktime_t *abs_time, u32 __user *uaddr2, u32 bitset)
-#else /* VENDOR_EDIT */
 static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
 		      ktime_t *abs_time, u32 bitset)
-#endif /* VENDOR_EDIT */
 {
 	struct hrtimer_sleeper timeout, *to = NULL;
 	struct restart_block *restart;
@@ -2447,12 +2419,6 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
 	if (!bitset)
 		return -EINVAL;
 	q.bitset = bitset;
-#ifdef VENDOR_EDIT
-// Liujie.Xie@TECH.Kernel.Sched, 2019/10/08, add for ui first
-    if (sysctl_uifirst_enabled && (q.bitset == FUTEX_BITSET_MATCH_ANY) && test_task_ux(current)) {
-        q.wait_for = get_futex_owner(uaddr2);
-    }
-#endif /* VENDOR_EDIT */
 
 	if (abs_time) {
 		to = &timeout;
@@ -2504,10 +2470,6 @@ retry:
 	restart->futex.time = abs_time->tv64;
 	restart->futex.bitset = bitset;
 	restart->futex.flags = flags | FLAGS_HAS_TIMEOUT;
-#ifdef VENDOR_EDIT
-// Liujie.Xie@TECH.Kernel.Sched, 2019/10/08, add for ui first
-    restart->futex.uaddr2 = uaddr2;
-#endif /* VENDOR_EDIT */
 
 	ret = -ERESTART_RESTARTBLOCK;
 
@@ -2531,14 +2493,8 @@ static long futex_wait_restart(struct restart_block *restart)
 	}
 	restart->fn = do_no_restart_syscall;
 
-#ifdef VENDOR_EDIT
-// Liujie.Xie@TECH.Kernel.Sched, 2019/10/08, add for ui first
-    return (long)futex_wait(uaddr, restart->futex.flags,
-                restart->futex.val, tp, restart->futex.uaddr2, restart->futex.bitset);
-#else /* VENDOR_EDIT */
 	return (long)futex_wait(uaddr, restart->futex.flags,
 				restart->futex.val, tp, restart->futex.bitset);
-#endif /* VENDOR_EDIT */
 }
 
 
@@ -3267,12 +3223,7 @@ long do_futex(u32 __user *uaddr, int op, u32 val, ktime_t *timeout,
 	case FUTEX_WAIT:
 		val3 = FUTEX_BITSET_MATCH_ANY;
 	case FUTEX_WAIT_BITSET:
-#ifdef VENDOR_EDIT
-// Liujie.Xie@TECH.Kernel.Sched, 2019/10/08, add for ui first
-        return futex_wait(uaddr, flags, val, timeout, uaddr2, val3);
-#else /* VENDOR_EDIT */
 		return futex_wait(uaddr, flags, val, timeout, val3);
-#endif /* VENDOR_EDIT */
 	case FUTEX_WAKE:
 		val3 = FUTEX_BITSET_MATCH_ANY;
 	case FUTEX_WAKE_BITSET:

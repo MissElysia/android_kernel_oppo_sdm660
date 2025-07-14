@@ -42,7 +42,6 @@ rsa_generic-y += rsaprivkey-asn1.o
 rsa_generic-y += rsa.o
 rsa_generic-y += rsa_helper.o
 obj-$(CONFIG_CRYPTO_RSA) += rsa_generic.o
-obj-$(CONFIG_CRYPTO_ACOMP2) += scompress.o
 
 cryptomgr-y := algboss.o testmgr.o
 
@@ -128,6 +127,7 @@ obj-$(CONFIG_CRYPTO_USER_API_SKCIPHER) += algif_skcipher.o
 obj-$(CONFIG_CRYPTO_USER_API_RNG) += algif_rng.o
 obj-$(CONFIG_CRYPTO_USER_API_AEAD) += algif_aead.o
 obj-$(CONFIG_CRYPTO_ZSTD) += zstd.o
+
 #
 # generic algorithms and the async_tx api
 #

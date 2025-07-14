@@ -1850,9 +1850,7 @@ static void wcd_mbhc_detect_plug_type(struct wcd_mbhc *mbhc)
 #define pr_debug pr_info
 #endif /* VENDOR_EDIT */
 
-
 	pr_debug("%s: enter\n", __func__);
-	
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 
 	if (mbhc->mbhc_cb->hph_pull_down_ctrl)

@@ -486,13 +486,6 @@ static int msm_anlg_cdc_mbhc_map_btn_code_to_num(struct snd_soc_codec *codec)
 		break;
 	};
 
-	#ifdef VENDOR_EDIT
-	/* Jianfeng.Qiu@PSW.MM.AudioDriver.Codec, 2017/04/07,
-	 * Add for headset button log.
-	 */
-	pr_info("%s: btn is %d", __func__, btn);
-	#endif /* VENDOR_EDIT */
-
 	return btn;
 }
 
@@ -4776,10 +4769,6 @@ static int msm_anlg_cdc_probe(struct platform_device *pdev)
 				     GFP_KERNEL);
 	if (sdm660_cdc == NULL) {
 		ret = -ENOMEM;
-		#ifdef VENDOR_EDIT
-		/* Jianfeng.Qiu@PSW.MM.AudioDriver.Machine,2017/09/21, Add for log*/
-		pr_err("%s: *** -ENOMEM\n", __func__);
-		#endif /* VENDOR_EDIT */
 		goto rtn;
 	}
 
