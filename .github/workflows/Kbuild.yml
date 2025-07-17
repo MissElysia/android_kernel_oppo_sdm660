@@ -8,7 +8,13 @@ on:
         required: true
         options:
         - 'OPPO R11'
+        - 'OPPO R11t'
+        - 'OPPO R11 Plus'
+        - 'OPPO R11 Plusk'
+        - 'OPPO R11 Pluskt'
         - 'OPPO R11s'
+        - 'OPPO R11sPlus'
+        - 'OPPO R11sPlust'
       target:
         type: choice
         description: 'OPPO_TARGET_DEVICE'
