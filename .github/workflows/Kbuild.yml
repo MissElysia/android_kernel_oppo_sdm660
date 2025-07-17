@@ -3,7 +3,7 @@ on:
   workflow_call:
   workflow_dispatch:
     inputs:
-target:
+      device:
         type: choice
         required: true
         options:
