@@ -91,33 +91,36 @@ if [ -f version ]; then
   ui_print " ";
 fi;
 
-sleep 1;
+sleep 1
 
-ui_print " " "AnyKernel3 by osm0sis @ xda-developers" " " " ";
-ui_print ("内核作者:爱莉希雅,WenHao2130,Cy");
-ui_print ("编译工具链:Zyc_Clang");
-ui_print ("己开启pstore救援");
-ui_print ("Root方式:Sukisu Ultra");
-ui_print ("模块挂载:Magic Mount");
-ui_print ("KPM状态:√");
-ui_print ("KSU救援模式状态:可用");
-ui_print ("SUSFS状态:×");
-ui_print ("第三方运存算法状态:×");
-ui_print ("VFS状态:×");
-ui_print ("GKI版本:1.0/nongki");
-ui_print ("刷入方式:卡刷");
-ui_print ("QQ群:995160937");
-ui_print ("设备供应商:OPPO");
-ui_print ("设备名称: " + getprop("ro.product.model");
-ui_print ("CPU架构:arm64-v8");
-ui_print ("SOC厂商:Qualcomm");
-ui_print ("CPU型号:Snapdragon660");
-ui_print ("CPU代号:MSM 8976 Plus");
-ui_print ("GPU型号:Adreno(TM)512");
-ui_print ("CPU核心数量:8");
-ui_print ("请在非国产系统上使用!!!");
-ui_print ("禁止倒卖,欢迎举报!");
-ui_print ("嗨想我了吗无论何时何地爱莉希雅都会回应你的期待!");
+ui_print " "
+ui_print "AnyKernel3 by osm0sis @ xda-developers"
+ui_print "内核作者:爱莉希雅,WenHao2130,Cy,Linus,Linux,Google,Qualcomm"
+ui_print "编译工具链:Zyc_Clang"
+ui_print "己开启pstore救援"
+ui_print "Root方式:Sukisu Ultra"
+ui_print "模块挂载:Magic Mount"
+ui_print "KPM状态:√"
+ui_print "KSU救援模式状态:可用"
+ui_print "SUSFS状态:×"
+ui_print "第三方运存算法状态:×"
+ui_print "VFS状态:×"
+ui_print "GKI版本:1.0/nongki"
+ui_print "刷入方式:卡刷"
+ui_print "QQ群:995160937"
+ui_print "设备供应商:OPPO"
+ui_print "设备名称: $(getprop ro.product.model)"
+ui_print "CPU架构:arm64-v8"
+ui_print "SOC厂商:Qualcomm"
+ui_print "CPU型号:Snapdragon660"
+ui_print "CPU代号:MSM 8976 Plus"
+ui_print "GPU型号:Adreno(TM)512"
+ui_print "CPU核心数量:8"
+ui_print "请在非国产系统上使用!!!"
+ui_print "禁止倒卖,欢迎举报!"
+ui_print "嗨想我了吗无论何时何地爱莉希雅都会回应你的期待!"
+
+sleep 5;
 
 unmount_all;
 if [ ! "$(is_mounted /system)" ]; then
