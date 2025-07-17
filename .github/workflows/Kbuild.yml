@@ -1,4 +1,4 @@
-name: 编译${{ github.event.inputs.device }}内核与Anykernel3包
+name: 编译OPPO R11/OPPO R11s系列内核与Anykernel3包
 on:
   workflow_call:
   workflow_dispatch:
