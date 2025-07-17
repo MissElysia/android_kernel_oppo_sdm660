@@ -1,9 +1,15 @@
-name: 编译内核
+name: 编译${{ github.event.inputs.device }}内核与Anykernel3包
 on:
   workflow_call:
   workflow_dispatch:
     inputs:
-      device:
+target:
+        type: choice
+        required: true
+        options:
+        - 'OPPO R11'
+        - 'OPPO R11s'
+      target:
         type: choice
         description: 'OPPO_TARGET_DEVICE'
         required: true
@@ -16,7 +22,7 @@ on:
 
 jobs:
   build:
-    name: 编译内核
+    name: ${{ github.actor }}编译的${{ github.event.inputs.device }}内核
     runs-on: ubuntu-22.04
     steps:
 
@@ -43,7 +49,7 @@ jobs:
           mkdir $GITHUB_WORKSPACE/workdir/clang
           tar zxvf $GITHUB_WORKSPACE/workdir/zyc_clang20.tar.gz -C $GITHUB_WORKSPACE/workdir/clang
 
-      - name: 获取内核源码
+      - name: 获取${{ github.event.inputs.device }}内核源码
         run: |
           git clone --recursive https://github.com/$GITHUB_REPOSITORY/ -b ${{ steps.branch-names.outputs.current_branch }} --depth 1 $GITHUB_WORKSPACE/workdir/source
 
@@ -53,7 +59,7 @@ jobs:
          key: build-kernel-mido-kernel
          max-size: 2G
 
-      - name: 编译内核
+      - name: 编译${{ github.event.inputs.device }}内核
         run: |
           export KBUILD_BUILD_HOST=Github-Action
           export KBUILD_BUILD_USER=$(echo ${{ github.actor }})
@@ -62,17 +68,17 @@ jobs:
           export PATH="$GITHUB_WORKSPACE/workdir/clang/bin/:$PATH"
           export CROSS_COMPILE="aarch64-linux-gnu-"
           cd $GITHUB_WORKSPACE/workdir/source
-          export OPPO_TARGET_DEVICE="MSM_${{ github.event.inputs.device }}"
+          export OPPO_TARGET_DEVICE="MSM_${{ github.event.inputs.target }}"
           make O=out sdm660-perf_defconfig CC="ccache clang"
           make -j$(nproc --all) O=out CC="ccache clang" 2>&1 | tee kernel.log
 
       - name: 上传日志
         uses: actions/upload-artifact@v4
         with:
-          name: android_kernel_oppo_sdm660_${{ github.event.inputs.device }}_${{ env.BUILD_TIME }}_kernel.log
+          name: android_kernel_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}_kernel.log
           path: workdir/source/kernel.log
 
-      - name: 检查内核文件
+      - name: 检查${{ github.event.inputs.device }}内核文件
         run: |
           cd $GITHUB_WORKSPACE/workdir/source
           if [ -f out/arch/arm64/boot/Image.gz-dtb ]; then
@@ -87,7 +93,7 @@ jobs:
         run: |
           mkdir $GITHUB_WORKSPACE/workdir/SukiSU-Patch
           cd $GITHUB_WORKSPACE/workdir/SukiSU-Patch
-          wget https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.11-beta/patch_linux
+          curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kpm/patch_linux" -o patch_linux
           cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/Image .
           cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/dts/1*/*.dtb .
           chmod +x patch_linux
@@ -96,23 +102,23 @@ jobs:
           gzip -k Image Image.gz
           cat Image.gz *.dtb > Image.gz-dtb
 
-      - name: 上传内核
+      - name: 上传${{ github.event.inputs.device }}内核
         if: env.CHECK_FILE_IS_OK == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: android_kernel_oppo_sdm660_${{ github.event.inputs.device }}_${{ env.BUILD_TIME }}_Image.gz-dtb
+          name: android_kernel_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}_Image.gz-dtb
           path: workdir/SukiSU-Patch/Image.gz-dtb
 
-      - name: 制作Anykernel3包
+      - name: 制作${{ github.event.inputs.device }}Anykernel3包
         if: env.CHECK_FILE_IS_OK == 'true'
         run: |
           git clone https://github.com/$GITHUB_REPOSITORY/ -b prebuilt_ak3 --depth 1 $GITHUB_WORKSPACE/workdir/ak3
           rm -r $GITHUB_WORKSPACE/workdir/ak3/.git
           cp $GITHUB_WORKSPACE/workdir/SukiSU-Patch/Image.gz-dtb $GITHUB_WORKSPACE/workdir/ak3
 
-      - name: 上传AnyKernel3包
+      - name: 上传${{ github.event.inputs.device }}AnyKernel3包
         if: env.CHECK_FILE_IS_OK == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: AnyKernel3_oppo_sdm660_${{ github.event.inputs.device }}_${{ env.BUILD_TIME }}
+          name: AnyKernel3_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}
           path: workdir/ak3/*
