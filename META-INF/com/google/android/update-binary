@@ -91,7 +91,7 @@ if [ -f version ]; then
   ui_print " ";
 fi;
 
-sleep 1
+sleep 5
 
 ui_print " "
 ui_print "AnyKernel3 by osm0sis @ xda-developers"
@@ -109,18 +109,66 @@ ui_print "GKI版本:1.0/nongki"
 ui_print "刷入方式:卡刷"
 ui_print "QQ群:995160937"
 ui_print "设备供应商:OPPO"
-ui_print "设备名称: $(getprop ro.product.model)"
+
+if command -v getprop >/dev/null 2>&1; then
+    device_name=$(getprop ro.product.model)
+    [ -z "$device_name" ] && device_name="未知"
+else
+    device_name="未知"
+fi
+ui_print "设备名称:${device_name}"
+
+recovery_version=$(getprop ro.build.version.release)
+[ -z "$recovery_version" ] && recovery_version="未知"
+ui_print "Recovery支持的Android版本:$recovery_version"
 ui_print "CPU架构:arm64-v8"
 ui_print "SOC厂商:Qualcomm"
 ui_print "CPU型号:Snapdragon660"
 ui_print "CPU代号:MSM 8976 Plus"
 ui_print "GPU型号:Adreno(TM)512"
-ui_print "CPU核心数量:8"
+ui_print "CPU核心数量:8核"
+
+ram_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null)
+ram_kb=${ram_kb:-0}
+ram_gb=$(awk "BEGIN{printf \"%.2f\", $ram_kb/1024/1024}")
+ui_print "运行内存:${ram_gb}GB"
+
+flash_total_kb=$(df /data 2>/dev/null | awk 'NR==2 {print $2}')
+flash_total_kb=${flash_total_kb:-0}
+flash_total_gb=$(awk "BEGIN{printf \"%.2f\", $flash_total_kb/1024/1024}")
+ui_print "闪存容量:${flash_total_gb}GB"
+
+if [ -e /sys/block/mmcblk0/device/type ]; then
+    flash_type=$(cat /sys/block/mmcblk0/device/type 2>/dev/null)
+    [ -z "$flash_type" ] && flash_type="未知"
+    ui_print "闪存类型:$flash_type"
+elif [ -e /sys/block/sda/device/model ]; then
+    flash_type=$(cat /sys/block/sda/device/model 2>/dev/null)
+    [ -z "$flash_type" ] && flash_type="未知"
+    ui_print "闪存类型:$flash_type (UFS)"
+else
+    ui_print "闪存类型:未知"
+fi
+
+if [ -f /sys/class/graphics/fb0/virtual_size ]; then
+    resolution=$(cat /sys/class/graphics/fb0/virtual_size 2>/dev/null)
+    resolution_formatted=$(echo "$resolution" | sed 's/,/x/')
+    [ -z "$resolution_formatted" ] && resolution_formatted="未知"
+    ui_print "屏幕分辨率:${resolution_formatted}"
+elif [ -f /sys/class/graphics/fb0/modes ]; then
+    resolution=$(cat /sys/class/graphics/fb0/modes 2>/dev/null | awk -F: '{print $2}' | sed 's/[ ]//g')
+    [ -z "$resolution" ] && resolution="未知"
+    ui_print "屏幕分辨率:${resolution}"
+else
+    ui_print "屏幕分辨率:未知"
+fi
+
+ui_print "屏幕供应商:Samsung"
 ui_print "请在非国产系统上使用!!!"
 ui_print "禁止倒卖,欢迎举报!"
-ui_print "嗨想我了吗无论何时何地爱莉希雅都会回应你的期待!"
+ui_print "嗨想我了吗?无论何时何地爱莉希雅都会回应你的期待!"
 
-sleep 5;
+sleep 5
 
 unmount_all;
 if [ ! "$(is_mounted /system)" ]; then
@@ -195,7 +243,7 @@ if [ "$supported_ver" ]; then
   fi;
 fi;
 
-ui_print "Installing...";
+ui_print "安装中...";
 core=$($bb grep -oE 'ak.*core.sh' anykernel.sh);
 test -f tools/$core || $bb ln -s $home/tools/ak*-core.sh $home/tools/$core;
 PATH="$home/bin:$PATH" home=$home $bb ash anykernel.sh $2;
@@ -246,4 +294,4 @@ test "$savedpre" && export LD_PRELOAD="$savedpre";
 
 unmount_all;
 
-ui_print " " " " "Done!";
+ui_print " " " " "完成!";
