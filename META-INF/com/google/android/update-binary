@@ -121,15 +121,13 @@ ui_print "设备名称:${device_name}"
 recovery_version=$(getprop ro.build.version.release)
 [ -z "$recovery_version" ] && recovery_version="未知"
 ui_print "Recovery支持的Android版本:$recovery_version"
-ui_print(" ");
-ui_print("Checking kernel version...");
 
 kernel_info=$(cat /proc/version 2>/dev/null)
 
 if [ -n "$kernel_info" ]; then
-    ui_print("内核版本信息: $kernel_info");
+    ui_print "内核版本信息: $kernel_info"
 else
-    ui_print("未知版本!");
+    ui_print "未知版本!"
 fi
 
 ui_print "CPU架构:arm64-v8"
