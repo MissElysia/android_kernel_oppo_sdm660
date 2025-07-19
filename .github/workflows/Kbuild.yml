@@ -1,4 +1,4 @@
-name: 编译OPPO R11/OPPO R11s系列内核与Anykernel3包
+name: 編譯OPPO-Snapdragon660-Android-Pieの核心與Anykernel3文檔
 on:
   workflow_call:
   workflow_dispatch:
@@ -21,27 +21,31 @@ on:
         required: true
         options:
         - '16051'
+        - '16052'
         - '16103'
         - '16118'
+        - '16116'
         - '17011'
+        - '17013'
         - '17021'
+        - '17023'
 
 jobs:
   build:
-    name: ${{ github.actor }}编译的${{ github.event.inputs.device }}内核
+    name: ${{ github.actor }}編譯嘅${{ github.event.inputs.device }}核心
     runs-on: ubuntu-22.04
     steps:
 
-      - name: 获取分支名称
+      - name: 獲取分支嘅名稱
         id: branch-names
         uses: tj-actions/branch-names@v8
 
-      - name: 设置5GIB的SWAP
+      - name: 設定5GIB嘅SWAP
         uses: pierotofy/set-swap-space@master
         with:
           swap-size-gb: 5
 
-      - name: 安装环境
+      - name: 安裝所需嘅環境
         run: |
           sudo apt-get update
           sudo apt-get install git automake flex lzop bison gperf build-essential zip curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 lib32ncurses5-dev libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip device-tree-compiler python2 python3
@@ -49,23 +53,23 @@ jobs:
           cd $GITHUB_WORKSPACE/workdir
           echo "BUILD_TIME=$(TZ=Asia/Shanghai date "+%Y%m%d%H%M")" >> $GITHUB_ENV
 
-      - name: 获取zyc-clang20编译器
+      - name: 獲取zyc-clang20工具鏈
         run: |
           wget https://github.com/ZyCromerZ/Clang/releases/download/20.0.0git-20241109-release/Clang-20.0.0git-20241109.tar.gz -O $GITHUB_WORKSPACE/workdir/zyc_clang20.tar.gz
           mkdir $GITHUB_WORKSPACE/workdir/clang
           tar zxvf $GITHUB_WORKSPACE/workdir/zyc_clang20.tar.gz -C $GITHUB_WORKSPACE/workdir/clang
 
-      - name: 获取${{ github.event.inputs.device }}内核源码
+      - name: 獲取${{ github.event.inputs.device }}嘅核心源碼
         run: |
           git clone --recursive https://github.com/$GITHUB_REPOSITORY/ -b ${{ steps.branch-names.outputs.current_branch }} --depth 1 $GITHUB_WORKSPACE/workdir/source
 
-      - name: 设置ccache缓存
+      - name: 設定ccache嘅容量
         uses: hendrikmuhs/ccache-action@v1.2
         with:
          key: build-kernel-mido-kernel
          max-size: 2G
 
-      - name: 编译${{ github.event.inputs.device }}内核
+      - name: 編譯${{ github.event.inputs.device }}核心
         run: |
           export KBUILD_BUILD_HOST=Github-Action
           export KBUILD_BUILD_USER=$(echo ${{ github.actor }})
@@ -78,13 +82,13 @@ jobs:
           make O=out sdm660-perf_defconfig CC="ccache clang"
           make -j$(nproc --all) O=out CC="ccache clang" 2>&1 | tee kernel.log
 
-      - name: 上传日志
+      - name: 上傳日志
         uses: actions/upload-artifact@v4
         with:
           name: android_kernel_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}_kernel.log
           path: workdir/source/kernel.log
 
-      - name: 检查${{ github.event.inputs.device }}内核文件
+      - name: 檢查${{ github.event.inputs.device }}嘅內核文檔
         run: |
           cd $GITHUB_WORKSPACE/workdir/source
           if [ -f out/arch/arm64/boot/Image.gz-dtb ]; then
@@ -94,7 +98,7 @@ jobs:
               exit 1
           fi
 
-      - name: 打SukiSU Ultra补丁
+      - name: 修補KPM
         if: env.CHECK_FILE_IS_OK == 'true'
         run: |
           mkdir $GITHUB_WORKSPACE/workdir/SukiSU-Patch
@@ -108,21 +112,21 @@ jobs:
           gzip -k Image Image.gz
           cat Image.gz *.dtb > Image.gz-dtb
 
-      - name: 上传${{ github.event.inputs.device }}内核
+      - name: 上傳${{ github.event.inputs.device }}嘅內核
         if: env.CHECK_FILE_IS_OK == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: android_kernel_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}_Image.gz-dtb
           path: workdir/SukiSU-Patch/Image.gz-dtb
 
-      - name: 制作${{ github.event.inputs.device }}Anykernel3包
+      - name: 制作${{ github.event.inputs.device }}嘅Anykernel3文檔
         if: env.CHECK_FILE_IS_OK == 'true'
         run: |
           git clone https://github.com/$GITHUB_REPOSITORY/ -b prebuilt_ak3 --depth 1 $GITHUB_WORKSPACE/workdir/ak3
           rm -r $GITHUB_WORKSPACE/workdir/ak3/.git
           cp $GITHUB_WORKSPACE/workdir/SukiSU-Patch/Image.gz-dtb $GITHUB_WORKSPACE/workdir/ak3
 
-      - name: 上传${{ github.event.inputs.device }}AnyKernel3包
+      - name: 上傳${{ github.event.inputs.device }}嘅AnyKernel3文檔
         if: env.CHECK_FILE_IS_OK == 'true'
         uses: actions/upload-artifact@v4
         with:
