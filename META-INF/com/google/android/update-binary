@@ -96,11 +96,21 @@ sleep 5
 ui_print " "
 ui_print "AnyKernel3 by osm0sis @ xda-developers"
 ui_print "内核作者:爱莉希雅,WenHao2130,Cy,Linus,Linux,Google,Qualcomm"
-ui_print "编译工具链:Zyc_Clang"
-ui_print "己开启pstore救援"
 ui_print "Root方式:Sukisu Ultra"
 ui_print "模块挂载:Magic Mount"
 ui_print "KPM状态:√"
+
+if [ -f /proc/config.gz ]; then
+    if zcat /proc/config.gz 2>/dev/null | grep -q 'CONFIG_PSTORE=y'; then
+        ui_print "pstore状态：已启用"
+    else
+        ui_print "pstore状态：未启用（内核未配置）"
+    fi
+else
+    ui_print "pstore状态：未知（/proc/config.gz 不存在）"
+fi
+
+
 ui_print "KSU救援模式状态:可用"
 ui_print "SUSFS状态:×"
 ui_print "第三方运存算法状态:×"
