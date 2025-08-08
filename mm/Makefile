@@ -41,7 +41,6 @@ obj-y			:= filemap.o mempool.o oom_kill.o \
 			   compaction.o vmacache.o \
 			   interval_tree.o list_lru.o workingset.o \
 			   debug.o $(mmu-y) showmem.o vmpressure.o
->>>>>>> 12a1795554df (mm: vmpressure: allow in-kernel clients to subscribe for events)
 
 obj-y += init-mm.o
 
