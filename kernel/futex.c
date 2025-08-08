@@ -1380,6 +1380,8 @@ static int lock_pi_update_atomic(u32 __user *uaddr, u32 uval, u32 newval)
  *			lookup
  * @task:		the task to perform the atomic lock work for.  This will
  *			be "current" except in the case of requeue pi.
+ * @exiting:		Pointer to store the task pointer of the owner task
+ *			which is in the middle of exiting
  * @set_waiters:	force setting the FUTEX_WAITERS bit (1) or not (0)
  *
  * Return:
@@ -1388,11 +1390,17 @@ static int lock_pi_update_atomic(u32 __user *uaddr, u32 uval, u32 newval)
  * <0 - error
  *
  * The hb->lock and futex_key refs shall be held by the caller.
+ *
+ * @exiting is only set when the return value is -EBUSY. If so, this holds
+ * a refcount on the exiting task on return and the caller needs to drop it
+ * after waiting for the exit to complete.
  */
 static int futex_lock_pi_atomic(u32 __user *uaddr, struct futex_hash_bucket *hb,
 				union futex_key *key,
 				struct futex_pi_state **ps,
-				struct task_struct *task, int set_waiters)
+				struct task_struct *task,
+				struct task_struct **exiting,
+				int set_waiters)
 {
 	u32 uval, newval, vpid = task_pid_vnr(task);
 	struct futex_q *match;
