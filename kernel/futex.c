@@ -1892,6 +1892,8 @@ void requeue_pi_wake_futex(struct futex_q *q, union futex_key *key,
  * @key1:		the from futex key
  * @key2:		the to futex key
  * @ps:			address to store the pi_state pointer
+ * @exiting:		Pointer to store the task pointer of the owner task
+ *			which is in the middle of exiting
  * @set_waiters:	force setting the FUTEX_WAITERS bit (1) or not (0)
  *
  * Try and get the lock on behalf of the top waiter if we can do it atomically.
@@ -1899,16 +1901,20 @@ void requeue_pi_wake_futex(struct futex_q *q, union futex_key *key,
  * then direct futex_lock_pi_atomic() to force setting the FUTEX_WAITERS bit.
  * hb1 and hb2 must be held by the caller.
  *
+ * @exiting is only set when the return value is -EBUSY. If so, this holds
+ * a refcount on the exiting task on return and the caller needs to drop it
+ * after waiting for the exit to complete.
+ *
  * Return:
  *  0 - failed to acquire the lock atomically;
  * >0 - acquired the lock, return value is vpid of the top_waiter
  * <0 - error
  */
-static int futex_proxy_trylock_atomic(u32 __user *pifutex,
-				 struct futex_hash_bucket *hb1,
-				 struct futex_hash_bucket *hb2,
-				 union futex_key *key1, union futex_key *key2,
-				 struct futex_pi_state **ps, int set_waiters)
+static int
+futex_proxy_trylock_atomic(u32 __user *pifutex, struct futex_hash_bucket *hb1,
+			   struct futex_hash_bucket *hb2, union futex_key *key1,
+			   union futex_key *key2, struct futex_pi_state **ps,
+			   struct task_struct **exiting, int set_waiters)
 {
 	struct futex_q *top_waiter = NULL;
 	u32 curval;
