@@ -2111,6 +2111,7 @@ struct task_struct {
 #ifdef CONFIG_COMPAT
 	struct compat_robust_list_head __user *compat_robust_list;
 #endif
+	unsigned int futex_state;
 	struct list_head pi_state_list;
 	struct futex_pi_state *pi_state_cache;
 #endif
