@@ -835,3 +835,8 @@ CONFIG_IOSCHED_TRIPNDROID=y
 CONFIG_IOSCHED_DEPRESSION=y
 CONFIG_IOSCHED_BFQ=y
 #endif
+
+#ifdef VENDOR_EDIT
+#/* Elysia add boeffla wakelock bl Ocker. */
+CONFIG_BOEFFLA_WL_BLOCKER=y
+#endif
