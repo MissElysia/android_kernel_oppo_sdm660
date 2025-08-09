@@ -102,28 +102,14 @@ static void quota2_log(const struct net_device *in,
 
 	strlcpy(q->last_prefix, prefix, QUOTA2_SYSFS_WORK_MAX_SIZE);
 
-	nlh = nlmsg_put(log_skb, /*pid*/0, /*seq*/0, qlog_nl_event,
-			sizeof(*pm), 0);
-	if (!nlh) {
-		pr_err("xt_quota2: nlmsg_put failed\n");
-		kfree_skb(log_skb);
-		return;
-	}
-	pm = nlmsg_data(nlh);
-	memset(pm, 0, sizeof(*pm));
-	if (skb->tstamp.tv64 == 0)
-		__net_timestamp((struct sk_buff *)skb);
-	pm->hook = hooknum;
-	if (prefix != NULL)
-		strlcpy(pm->prefix, prefix, sizeof(pm->prefix));
 	if (in)
-		strlcpy(pm->indev_name, in->name, sizeof(pm->indev_name));
-	if (out)
-		strlcpy(pm->outdev_name, out->name, sizeof(pm->outdev_name));
+		strlcpy(q->last_iface, in->name, QUOTA2_SYSFS_WORK_MAX_SIZE);
+	else if (out)
+		strlcpy(q->last_iface, out->name, QUOTA2_SYSFS_WORK_MAX_SIZE);
+	else
+		strlcpy(q->last_iface, "UNKNOWN", QUOTA2_SYSFS_WORK_MAX_SIZE);
 
-	NETLINK_CB(log_skb).dst_group = 1;
-	pr_debug("throwing 1 packets to netlink group 1\n");
-	netlink_broadcast(nflognl, log_skb, 0, 1, GFP_ATOMIC);
+	schedule_work(&q->work);
 }
 
 static ssize_t quota_proc_read(struct file *file, char __user *buf,
@@ -150,8 +136,6 @@ static ssize_t quota_proc_write(struct file *file, const char __user *input,
 	if (copy_from_user(buf, input, size) != 0)
 		return -EFAULT;
 	buf[sizeof(buf)-1] = '\0';
-	if (size < sizeof(buf))
-		buf[size] = '\0';
 
 	spin_lock_bh(&e->lock);
 	e->quota = simple_strtoull(buf, NULL, 0);
@@ -289,8 +273,8 @@ static void quota_mt2_destroy(const struct xt_mtdtor_param *par)
 	}
 
 	list_del(&e->list);
-	remove_proc_entry(e->name, proc_xt_quota);
 	spin_unlock_bh(&counter_list_lock);
+	remove_proc_entry(e->name, proc_xt_quota);
 	kfree(e);
 }
 
@@ -299,6 +283,8 @@ quota_mt2(const struct sk_buff *skb, struct xt_action_param *par)
 {
 	struct xt_quota_mtinfo2 *q = (void *)par->matchinfo;
 	struct xt_quota_counter *e = q->master;
+	int charge = (q->flags & XT_QUOTA_PACKET) ? 1 : skb->len;
+	bool no_change = q->flags & XT_QUOTA_NO_CHANGE;
 	bool ret = q->flags & XT_QUOTA_INVERT;
 
 	spin_lock_bh(&e->lock);
@@ -307,20 +293,17 @@ quota_mt2(const struct sk_buff *skb, struct xt_action_param *par)
 		 * While no_change is pointless in "grow" mode, we will
 		 * implement it here simply to have a consistent behavior.
 		 */
-		if (!(q->flags & XT_QUOTA_NO_CHANGE)) {
-			e->quota += (q->flags & XT_QUOTA_PACKET) ? 1 : skb->len;
-		}
-		ret = true;
+		if (!no_change)
+			e->quota += charge;
+		ret = true; /* note: does not respect inversion (bug??) */
 	} else {
-		if (e->quota >= skb->len) {
-			if (!(q->flags & XT_QUOTA_NO_CHANGE))
-				e->quota -= (q->flags & XT_QUOTA_PACKET) ? 1 : skb->len;
+		if (e->quota > charge) {
+			if (!no_change)
+				e->quota -= charge;
 			ret = !ret;
-		} else {
+		} else if (e->quota) {
 			/* We are transitioning, log that fact. */
-			if (e->quota) {
-				quota2_log(par->in, par->out, e, q->name);
-			}
+			quota2_log(par->in, par->out, e, q->name);
 			/* we do not allow even small packets from now on */
 			e->quota = 0;
 		}
@@ -338,7 +321,6 @@ static struct xt_match quota_mt2_reg[] __read_mostly = {
 		.match      = quota_mt2,
 		.destroy    = quota_mt2_destroy,
 		.matchsize  = sizeof(struct xt_quota_mtinfo2),
-		.usersize   = offsetof(struct xt_quota_mtinfo2, master),
 		.me         = THIS_MODULE,
 	},
 	{
@@ -349,7 +331,6 @@ static struct xt_match quota_mt2_reg[] __read_mostly = {
 		.match      = quota_mt2,
 		.destroy    = quota_mt2_destroy,
 		.matchsize  = sizeof(struct xt_quota_mtinfo2),
-		.usersize   = offsetof(struct xt_quota_mtinfo2, master),
 		.me         = THIS_MODULE,
 	},
 };
