@@ -406,6 +406,9 @@ struct spi_master {
 	 */
 	u16			dma_alignment;
 
+	/* flag indicating this is an SPI slave controller */
+	bool			slave;
+
 	/* spi_device.mode flags understood by this controller driver */
 	u16			mode_bits;
 
