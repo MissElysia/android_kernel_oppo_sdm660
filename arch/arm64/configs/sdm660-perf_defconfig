@@ -842,3 +842,8 @@ CONFIG_NET_CLS_BPF=y
 CONFIG_NET_ACT_BPF=y
 CONFIG_BPF_JIT=y
 #endif
+
+#ifdef VENDOR_EDIT
+#/* Elysia add BLK CGROUP. */
+CONFIG_BLK_CGROUP=y
+#endif
