@@ -66,6 +66,7 @@ enum flat_binder_object_flags {
 	 * @FLAT_BINDER_FLAG_ACCEPTS_FDS: whether the node accepts fds.
 	 */
 	FLAT_BINDER_FLAG_ACCEPTS_FDS = 0x100,
+
 	/**
 	 * @FLAT_BINDER_FLAG_SCHED_POLICY_MASK: bit-mask for scheduling policy
 	 *
@@ -246,6 +247,25 @@ struct binder_node_debug_info {
 	__u32            has_weak_ref;
 };
 
+struct binder_freeze_info {
+	__u32            pid;
+	__u32            enable;
+	__u32            timeout_ms;
+};
+
+struct binder_frozen_status_info {
+	__u32            pid;
+
+	/* process received sync transactions since last frozen
+	 * bit 0: received sync transaction after being frozen
+	 * bit 1: new pending sync transaction during freezing
+	 */
+	__u32            sync_recv;
+
+	/* process received async transactions since last frozen */
+	__u32            async_recv;
+};
+
 #define BINDER_WRITE_READ		_IOWR('b', 1, struct binder_write_read)
 #define BINDER_SET_IDLE_TIMEOUT		_IOW('b', 3, __s64)
 #define BINDER_SET_MAX_THREADS		_IOW('b', 5, __u32)
@@ -254,6 +274,9 @@ struct binder_node_debug_info {
 #define BINDER_THREAD_EXIT		_IOW('b', 8, __s32)
 #define BINDER_VERSION			_IOWR('b', 9, struct binder_version)
 #define BINDER_GET_NODE_DEBUG_INFO	_IOWR('b', 11, struct binder_node_debug_info)
+#define BINDER_FREEZE			_IOW('b', 14, struct binder_freeze_info)
+#define BINDER_GET_FROZEN_INFO		_IOWR('b', 15, struct binder_frozen_status_info)
+#define BINDER_ENABLE_ONEWAY_SPAM_DETECTION	_IOW('b', 16, __u32)
 
 /*
  * NOTE: Two special error codes you should check for when calling
@@ -423,6 +446,19 @@ enum binder_driver_return_protocol {
 	/*
 	 * The the last transaction (either a bcTRANSACTION or
 	 * a bcATTEMPT_ACQUIRE) failed (e.g. out of memory).  No parameters.
+	 */
+
+	BR_FROZEN_REPLY = _IO('r', 18),
+	/*
+	 * The target of the last transaction (either a bcTRANSACTION or
+	 * a bcATTEMPT_ACQUIRE) is frozen.  No parameters.
+	 */
+
+	BR_ONEWAY_SPAM_SUSPECT = _IO('r', 19),
+	/*
+	 * Current process sent too many oneway calls to target, and the last
+	 * asynchronous transaction makes the allocated async buffer size exceed
+	 * detection threshold.  No parameters.
 	 */
 };
 
