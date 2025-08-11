@@ -215,7 +215,7 @@ static enum oom_constraint constrained_alloc(struct oom_control *oc,
 	int nid;
 
 	/* Default to all available memory */
-	*totalpages = totalram_pages + total_swap_pages;
+	*totalpages = totalram_pages() + total_swap_pages;
 
 	if (!oc->zonelist)
 		return CONSTRAINT_NONE;
@@ -258,7 +258,7 @@ static enum oom_constraint constrained_alloc(struct oom_control *oc,
 static enum oom_constraint constrained_alloc(struct oom_control *oc,
 					     unsigned long *totalpages)
 {
-	*totalpages = totalram_pages + total_swap_pages;
+	*totalpages = totalram_pages() + total_swap_pages;
 	return CONSTRAINT_NONE;
 }
 #endif
@@ -685,6 +685,10 @@ bool out_of_memory(struct oom_control *oc)
 	unsigned int uninitialized_var(points);
 	enum oom_constraint constraint = CONSTRAINT_NONE;
 
+	/* Return true since Simple LMK automatically kills in the background */
+	if (IS_ENABLED(CONFIG_ANDROID_SIMPLE_LMK))
+		return true;
+
 	if (oom_killer_disabled)
 		return false;
 
@@ -758,6 +762,9 @@ void pagefault_out_of_memory(void)
 	};
 
 	if (mem_cgroup_oom_synchronize(true))
+		return;
+
+	if (fatal_signal_pending(current))
 		return;
 
 	if (!mutex_trylock(&oom_lock))

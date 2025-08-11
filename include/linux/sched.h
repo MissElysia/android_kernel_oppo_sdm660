@@ -1971,7 +1971,9 @@ struct task_struct {
 #ifdef CONFIG_COMPAT
 	struct compat_robust_list_head __user *compat_robust_list;
 #endif
+	unsigned int futex_state;
 	struct list_head pi_state_list;
+	struct mutex futex_exit_mutex;	
 	struct futex_pi_state *pi_state_cache;
 #endif
 #ifdef CONFIG_PERF_EVENTS
@@ -2120,6 +2122,9 @@ struct task_struct {
 	unsigned long	task_state_change;
 #endif
 	int pagefault_disabled;
+#ifdef CONFIG_ANDROID_SIMPLE_LMK
+	struct task_struct		*simple_lmk_next;
+#endif
 /* CPU-specific state of this task */
 	struct thread_struct thread;
 /*
@@ -3191,7 +3196,7 @@ static inline int thread_group_empty(struct task_struct *p)
  * Protects ->fs, ->files, ->mm, ->group_info, ->comm, keyring
  * subscriptions and synchronises with wait4().  Also used in procfs.  Also
  * pins the final release of task.io_context.  Also protects ->cpuset and
- * ->cgroup.subsys[]. And ->vfork_done.
+ * ->cgroup.subsys[]. And ->vfork_done. And ->sysvshm.shm_clist.
  *
  * Nests both inside and outside of read_lock(&tasklist_lock).
  * It must not be nested with write_lock_irq(&tasklist_lock),

@@ -79,6 +79,7 @@
 #include <linux/sysctl.h>
 #include <linux/kcov.h>
 #include <linux/cpufreq_times.h>
+#include <linux/simple_lmk.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -285,10 +286,10 @@ static void set_max_threads(unsigned int max_threads_suggested)
 	 * The number of threads shall be limited such that the thread
 	 * structures may only consume a small part of the available memory.
 	 */
-	if (fls64(totalram_pages) + fls64(PAGE_SIZE) > 64)
+	if (fls64(totalram_pages()) + fls64(PAGE_SIZE) > 64)
 		threads = MAX_THREADS;
 	else
-		threads = div64_u64((u64) totalram_pages * (u64) PAGE_SIZE,
+		threads = div64_u64((u64) totalram_pages() * (u64) PAGE_SIZE,
 				    (u64) THREAD_SIZE * 8UL);
 
 	if (threads > max_threads_suggested)
@@ -717,6 +718,7 @@ static inline void __mmput(struct mm_struct *mm)
 	ksm_exit(mm);
 	khugepaged_exit(mm); /* must run before exit_mmap */
 	exit_mmap(mm);
+	simple_lmk_mm_freed(mm);
 	set_mm_exe_file(mm, NULL);
 	if (!list_empty(&mm->mmlist)) {
 		spin_lock(&mmlist_lock);
@@ -1317,7 +1319,6 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 {
 	int retval;
 	struct task_struct *p;
-	void *cgrp_ss_priv[CGROUP_CANFORK_COUNT] = {};
 
 	if ((clone_flags & (CLONE_NEWNS|CLONE_FS)) == (CLONE_NEWNS|CLONE_FS))
 		return ERR_PTR(-EINVAL);
@@ -1589,7 +1590,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	 * between here and cgroup_post_fork() if an organisation operation is in
 	 * progress.
 	 */
-	retval = cgroup_can_fork(p, cgrp_ss_priv);
+	retval = cgroup_can_fork(p);
 	if (retval)
 		goto bad_fork_free_pid;
 
@@ -1689,7 +1690,8 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	write_unlock_irq(&tasklist_lock);
 
 	proc_fork_connector(p);
-	cgroup_post_fork(p, cgrp_ss_priv);
+	cgroup_post_fork(p);
+	perf_event_fork(p);
 	threadgroup_change_end(current);
 	perf_event_fork(p);
 
@@ -1701,7 +1703,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 bad_fork_cancel_cgroup:
 	spin_unlock(&current->sighand->siglock);
 	write_unlock_irq(&tasklist_lock);
-	cgroup_cancel_fork(p, cgrp_ss_priv);
+	cgroup_cancel_fork(p);
 bad_fork_free_pid:
 	threadgroup_change_end(current);
 	if (pid != &init_struct_pid)
@@ -1968,7 +1970,7 @@ static int check_unshare_flags(unsigned long unshare_flags)
 	if (unshare_flags & ~(CLONE_THREAD|CLONE_FS|CLONE_NEWNS|CLONE_SIGHAND|
 				CLONE_VM|CLONE_FILES|CLONE_SYSVSEM|
 				CLONE_NEWUTS|CLONE_NEWIPC|CLONE_NEWNET|
-				CLONE_NEWUSER|CLONE_NEWPID))
+				CLONE_NEWUSER|CLONE_NEWPID|CLONE_NEWCGROUP))
 		return -EINVAL;
 	/*
 	 * Not implemented, but pretend it works if there is nothing

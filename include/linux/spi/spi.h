@@ -406,6 +406,9 @@ struct spi_master {
 	 */
 	u16			dma_alignment;
 
+	/* flag indicating this is an SPI slave controller */
+	bool			slave;
+
 	/* spi_device.mode flags understood by this controller driver */
 	u16			mode_bits;
 
@@ -427,8 +430,8 @@ struct spi_master {
 #define SPI_MASTER_MUST_RX      BIT(3)		/* requires rx */
 #define SPI_MASTER_MUST_TX      BIT(4)		/* requires tx */
 
-	/* flag indicating this is an SPI slave controller */
-	bool			slave;
+	/* flag indicating this is a non-devres managed controller */
+	bool			devm_allocated;
 
 	/* lock and mutex for SPI bus locking */
 	spinlock_t		bus_lock_spinlock;

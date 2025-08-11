@@ -73,6 +73,7 @@
 
 #include <uapi/linux/android/binder.h>
 #include "binder_alloc.h"
+#include "binder_internal.h"
 #include "binder_trace.h"
 
 static HLIST_HEAD(binder_deferred_list);
@@ -90,22 +91,8 @@ static struct dentry *binder_debugfs_dir_entry_proc;
 static atomic_t binder_last_id;
 static struct workqueue_struct *binder_deferred_workqueue;
 
-#define BINDER_DEBUG_ENTRY(name) \
-static int binder_##name##_open(struct inode *inode, struct file *file) \
-{ \
-	return single_open(file, binder_##name##_show, inode->i_private); \
-} \
-\
-static const struct file_operations binder_##name##_fops = { \
-	.owner = THIS_MODULE, \
-	.open = binder_##name##_open, \
-	.read = seq_read, \
-	.llseek = seq_lseek, \
-	.release = single_release, \
-}
-
-static int binder_proc_show(struct seq_file *m, void *unused);
-BINDER_DEBUG_ENTRY(proc);
+static int proc_show(struct seq_file *m, void *unused);
+DEFINE_SHOW_ATTRIBUTE(proc);
 
 /* This is only defined in include/asm-arm/sizes.h */
 #ifndef SZ_1K
@@ -141,8 +128,8 @@ static uint32_t binder_debug_mask = BINDER_DEBUG_USER_ERROR |
 	BINDER_DEBUG_FAILED_TRANSACTION | BINDER_DEBUG_DEAD_TRANSACTION;
 module_param_named(debug_mask, binder_debug_mask, uint, 0644);
 
-static char *binder_devices_param = CONFIG_ANDROID_BINDER_DEVICES;
-module_param_named(devices, binder_devices_param, charp, S_IRUGO);
+char *binder_devices_param = CONFIG_ANDROID_BINDER_DEVICES;
+module_param_named(devices, binder_devices_param, charp, 0444);
 
 static DECLARE_WAIT_QUEUE_HEAD(binder_user_error_wait);
 static int binder_stop_on_user_error;
@@ -215,30 +202,8 @@ static inline void binder_stats_created(enum binder_stat_types type)
 	atomic_inc(&binder_stats.obj_created[type]);
 }
 
-struct binder_transaction_log_entry {
-	int debug_id;
-	int debug_id_done;
-	int call_type;
-	int from_proc;
-	int from_thread;
-	int target_handle;
-	int to_proc;
-	int to_thread;
-	int to_node;
-	int data_size;
-	int offsets_size;
-	int return_error_line;
-	uint32_t return_error;
-	uint32_t return_error_param;
-	const char *context_name;
-};
-struct binder_transaction_log {
-	atomic_t cur;
-	bool full;
-	struct binder_transaction_log_entry entry[32];
-};
-static struct binder_transaction_log binder_transaction_log;
-static struct binder_transaction_log binder_transaction_log_failed;
+struct binder_transaction_log binder_transaction_log;
+struct binder_transaction_log binder_transaction_log_failed;
 
 static struct binder_transaction_log_entry *binder_transaction_log_add(
 	struct binder_transaction_log *log)
@@ -259,20 +224,6 @@ static struct binder_transaction_log_entry *binder_transaction_log_add(
 	memset(e, 0, sizeof(*e));
 	return e;
 }
-
-struct binder_context {
-	struct binder_node *binder_context_mgr_node;
-	struct mutex context_mgr_node_lock;
-
-	kuid_t binder_context_mgr_uid;
-	const char *name;
-};
-
-struct binder_device {
-	struct hlist_node hlist;
-	struct miscdevice miscdev;
-	struct binder_context context;
-};
 
 /**
  * struct binder_work - work enqueued on a worklist
@@ -536,6 +487,7 @@ struct binder_priority {
  * @inner_lock:           can nest under outer_lock and/or node lock
  * @outer_lock:           no nesting under innor or node lock
  *                        Lock order: 1) outer, 2) node, 3) inner
+ * @binderfs_entry:       process-specific binderfs log file
  *
  * Bookkeeping structure for binder processes
  */
@@ -550,6 +502,7 @@ struct binder_proc {
 	struct task_struct *tsk;
 	struct files_struct *files;
 	struct mutex files_lock;
+	const struct cred *cred;
 	struct hlist_node deferred_work_node;
 	int deferred_work;
 	bool is_dead;
@@ -567,6 +520,7 @@ struct binder_proc {
 	struct binder_context *context;
 	spinlock_t inner_lock;
 	spinlock_t outer_lock;
+	struct dentry *binderfs_entry;
 };
 
 enum {
@@ -2502,7 +2456,7 @@ static int binder_translate_binder(struct flat_binder_object *fp,
 		ret = -EINVAL;
 		goto done;
 	}
-	if (security_binder_transfer_binder(proc->tsk, target_proc->tsk)) {
+	if (security_binder_transfer_binder(proc->cred, target_proc->cred)) {
 		ret = -EPERM;
 		goto done;
 	}
@@ -2548,7 +2502,7 @@ static int binder_translate_handle(struct flat_binder_object *fp,
 				  proc->pid, thread->pid, fp->handle);
 		return -EINVAL;
 	}
-	if (security_binder_transfer_binder(proc->tsk, target_proc->tsk)) {
+	if (security_binder_transfer_binder(proc->cred, target_proc->cred)) {
 		ret = -EPERM;
 		goto done;
 	}
@@ -2632,7 +2586,7 @@ static int binder_translate_fd(int fd,
 		ret = -EBADF;
 		goto err_fget;
 	}
-	ret = security_binder_transfer_file(proc->tsk, target_proc->tsk, file);
+	ret = security_binder_transfer_file(proc->cred, target_proc->cred, file);
 	if (ret < 0) {
 		ret = -EPERM;
 		goto err_security;
@@ -3021,8 +2975,8 @@ static void binder_transaction(struct binder_proc *proc,
 			return_error_line = __LINE__;
 			goto err_invalid_target_handle;
 		}
-		if (security_binder_transaction(proc->tsk,
-						target_proc->tsk) < 0) {
+		if (security_binder_transaction(proc->cred,
+						target_proc->cred) < 0) {
 			return_error = BR_FAILED_REPLY;
 			return_error_param = -EPERM;
 			return_error_line = __LINE__;
@@ -3512,17 +3466,10 @@ static int binder_thread_write(struct binder_proc *proc,
 				struct binder_node *ctx_mgr_node;
 				mutex_lock(&context->context_mgr_node_lock);
 				ctx_mgr_node = context->binder_context_mgr_node;
-				if (ctx_mgr_node) {
-					if (ctx_mgr_node->proc == proc) {
-						binder_user_error("%d:%d context manager tried to acquire desc 0\n",
-								  proc->pid, thread->pid);
-						mutex_unlock(&context->context_mgr_node_lock);
-						return -EINVAL;
-					}
+				if (ctx_mgr_node)
 					ret = binder_inc_ref_for_node(
 							proc, ctx_mgr_node,
 							strong, NULL, &rdata);
-				}
 				mutex_unlock(&context->context_mgr_node_lock);
 			}
 			if (ret)
@@ -4486,10 +4433,18 @@ static struct binder_thread *binder_get_thread(struct binder_proc *proc)
 
 static void binder_free_proc(struct binder_proc *proc)
 {
+	struct binder_device *device;
+
 	BUG_ON(!list_empty(&proc->todo));
 	BUG_ON(!list_empty(&proc->delivered_death));
+	device = container_of(proc->context, struct binder_device, context);
+	if (refcount_dec_and_test(&device->ref)) {
+		kfree(proc->context->name);
+		kfree(device);
+	}
 	binder_alloc_deferred_release(&proc->alloc);
 	put_task_struct(proc->tsk);
+	put_cred(proc->cred);
 	binder_stats_deleted(BINDER_STAT_PROC);
 	kfree(proc);
 }
@@ -4561,23 +4516,20 @@ static int binder_thread_release(struct binder_proc *proc,
 	}
 
 	/*
-	 * If this thread used poll, make sure we remove the waitqueue
-	 * from any epoll data structures holding it with POLLFREE.
-	 * waitqueue_active() is safe to use here because we're holding
-	 * the inner lock.
+	 * If this thread used poll, make sure we remove the waitqueue from any
+	 * poll data structures holding it.
 	 */
-	if ((thread->looper & BINDER_LOOPER_STATE_POLL) &&
-	    waitqueue_active(&thread->wait)) {
-		wake_up_poll(&thread->wait, POLLHUP | POLLFREE);
-	}
+	if (thread->looper & BINDER_LOOPER_STATE_POLL)
+		wake_up_pollfree(&thread->wait);
 
 	binder_inner_proc_unlock(thread->proc);
 
 	/*
-	 * This is needed to avoid races between wake_up_poll() above and
-	 * and ep_remove_waitqueue() called for other reasons (eg the epoll file
-	 * descriptor being closed); ep_remove_waitqueue() holds an RCU read
-	 * lock, so we can be sure it's done after calling synchronize_rcu().
+	 * This is needed to avoid races between wake_up_pollfree() above and
+	 * someone else removing the last entry from the queue for other reasons
+	 * (e.g. ep_remove_wait_queue() being called due to an epoll file
+	 * descriptor being closed).  Such other users hold an RCU read lock, so
+	 * we can be sure they're done after we call synchronize_rcu().
 	 */
 	if (thread->looper & BINDER_LOOPER_STATE_POLL)
 		synchronize_rcu();
@@ -4694,7 +4646,7 @@ static int binder_ioctl_set_ctx_mgr(struct file *filp)
 		ret = -EBUSY;
 		goto out;
 	}
-	ret = security_binder_set_context_mgr(proc->tsk);
+	ret = security_binder_set_context_mgr(proc->cred);
 	if (ret < 0)
 		goto out;
 	if (uid_valid(context->binder_context_mgr_uid)) {
@@ -4936,6 +4888,8 @@ static int binder_open(struct inode *nodp, struct file *filp)
 {
 	struct binder_proc *proc;
 	struct binder_device *binder_dev;
+	struct binderfs_info *info;
+	struct dentry *binder_binderfs_dir_entry_proc = NULL;
 
 	binder_debug(BINDER_DEBUG_OPEN_CLOSE, "%s: %d:%d\n", __func__,
 		     current->group_leader->pid, current->pid);
@@ -4947,6 +4901,7 @@ static int binder_open(struct inode *nodp, struct file *filp)
 	spin_lock_init(&proc->outer_lock);
 	get_task_struct(current->group_leader);
 	proc->tsk = current->group_leader;
+	proc->cred = get_cred(filp->f_cred);
 	mutex_init(&proc->files_lock);
 	INIT_LIST_HEAD(&proc->todo);
 	if (binder_supported_policy(current->policy)) {
@@ -4957,8 +4912,16 @@ static int binder_open(struct inode *nodp, struct file *filp)
 		proc->default_priority.prio = NICE_TO_PRIO(0);
 	}
 
-	binder_dev = container_of(filp->private_data, struct binder_device,
-				  miscdev);
+	/* binderfs stashes devices in i_private */
+	if (is_binderfs_device(nodp)) {
+		binder_dev = nodp->i_private;
+		info = nodp->i_sb->s_fs_info;
+		binder_binderfs_dir_entry_proc = info->proc_log_dir;
+	} else {
+		binder_dev = container_of(filp->private_data,
+					  struct binder_device, miscdev);
+	}
+	refcount_inc(&binder_dev->ref);
 	proc->context = &binder_dev->context;
 	binder_alloc_init(&proc->alloc);
 
@@ -4986,7 +4949,36 @@ static int binder_open(struct inode *nodp, struct file *filp)
 		proc->debugfs_entry = debugfs_create_file(strbuf, 0444,
 			binder_debugfs_dir_entry_proc,
 			(void *)(unsigned long)proc->pid,
-			&binder_proc_fops);
+			&proc_fops);
+	}
+
+	if (binder_binderfs_dir_entry_proc) {
+		char strbuf[11];
+		struct dentry *binderfs_entry;
+
+		snprintf(strbuf, sizeof(strbuf), "%u", proc->pid);
+		/*
+		 * Similar to debugfs, the process specific log file is shared
+		 * between contexts. If the file has already been created for a
+		 * process, the following binderfs_create_file() call will
+		 * fail with error code EEXIST if another context of the same
+		 * process invoked binder_open(). This is ok since same as
+		 * debugfs, the log file will contain information on all
+		 * contexts of a given PID.
+		 */
+		binderfs_entry = binderfs_create_file(binder_binderfs_dir_entry_proc,
+			strbuf, &proc_fops, (void *)(unsigned long)proc->pid);
+		if (!IS_ERR(binderfs_entry)) {
+			proc->binderfs_entry = binderfs_entry;
+		} else {
+			int error;
+
+			error = PTR_ERR(binderfs_entry);
+			if (error != -EEXIST) {
+				pr_warn("Unable to create file %s in binderfs (error %d)\n",
+					strbuf, error);
+			}
+		}
 	}
 
 	return 0;
@@ -5028,6 +5020,12 @@ static int binder_release(struct inode *nodp, struct file *filp)
 	struct binder_proc *proc = filp->private_data;
 
 	debugfs_remove(proc->debugfs_entry);
+
+	if (proc->binderfs_entry) {
+		binderfs_remove_file(proc->binderfs_entry);
+		proc->binderfs_entry = NULL;
+	}
+
 	binder_defer_work(proc, BINDER_DEFERRED_RELEASE);
 
 	return 0;
@@ -5631,7 +5629,7 @@ static void print_binder_proc_stats(struct seq_file *m,
 }
 
 
-static int binder_state_show(struct seq_file *m, void *unused)
+int binder_state_show(struct seq_file *m, void *unused)
 {
 	struct binder_proc *proc;
 	struct binder_node *node;
@@ -5670,7 +5668,7 @@ static int binder_state_show(struct seq_file *m, void *unused)
 	return 0;
 }
 
-static int binder_stats_show(struct seq_file *m, void *unused)
+int binder_stats_show(struct seq_file *m, void *unused)
 {
 	struct binder_proc *proc;
 
@@ -5686,7 +5684,7 @@ static int binder_stats_show(struct seq_file *m, void *unused)
 	return 0;
 }
 
-static int binder_transactions_show(struct seq_file *m, void *unused)
+int binder_transactions_show(struct seq_file *m, void *unused)
 {
 	struct binder_proc *proc;
 
@@ -5699,7 +5697,7 @@ static int binder_transactions_show(struct seq_file *m, void *unused)
 	return 0;
 }
 
-static int binder_proc_show(struct seq_file *m, void *unused)
+static int proc_show(struct seq_file *m, void *unused)
 {
 	struct binder_proc *itr;
 	int pid = (unsigned long)m->private;
@@ -5742,7 +5740,7 @@ static void print_binder_transaction_log_entry(struct seq_file *m,
 			"\n" : " (incomplete)\n");
 }
 
-static int binder_transaction_log_show(struct seq_file *m, void *unused)
+int binder_transaction_log_show(struct seq_file *m, void *unused)
 {
 	struct binder_transaction_log *log = m->private;
 	unsigned int log_cur = atomic_read(&log->cur);
@@ -5763,7 +5761,7 @@ static int binder_transaction_log_show(struct seq_file *m, void *unused)
 	return 0;
 }
 
-static const struct file_operations binder_fops = {
+const struct file_operations binder_fops = {
 	.owner = THIS_MODULE,
 	.poll = binder_poll,
 	.unlocked_ioctl = binder_ioctl,
@@ -5773,11 +5771,6 @@ static const struct file_operations binder_fops = {
 	.flush = binder_flush,
 	.release = binder_release,
 };
-
-BINDER_DEBUG_ENTRY(state);
-BINDER_DEBUG_ENTRY(stats);
-BINDER_DEBUG_ENTRY(transactions);
-BINDER_DEBUG_ENTRY(transaction_log);
 
 static int __init init_binder_device(const char *name)
 {
@@ -5792,6 +5785,7 @@ static int __init init_binder_device(const char *name)
 	binder_device->miscdev.minor = MISC_DYNAMIC_MINOR;
 	binder_device->miscdev.name = name;
 
+	refcount_set(&binder_device->ref, 1);
 	binder_device->context.binder_context_mgr_uid = INVALID_UID;
 	binder_device->context.name = name;
 	mutex_init(&binder_device->context.context_mgr_node_lock);
@@ -5810,9 +5804,10 @@ static int __init init_binder_device(const char *name)
 static int __init binder_init(void)
 {
 	int ret;
-	char *device_name, *device_names, *device_tmp;
+	char *device_name, *device_tmp;
 	struct binder_device *device;
 	struct hlist_node *tmp;
+	char *device_names = NULL;
 
 	ret = binder_alloc_shrinker_init();
 	if (ret)
@@ -5857,23 +5852,29 @@ static int __init binder_init(void)
 				    &binder_transaction_log_fops);
 	}
 
-	/*
-	 * Copy the module_parameter string, because we don't want to
-	 * tokenize it in-place.
-	 */
-	device_names = kzalloc(strlen(binder_devices_param) + 1, GFP_KERNEL);
-	if (!device_names) {
-		ret = -ENOMEM;
-		goto err_alloc_device_names_failed;
-	}
-	strcpy(device_names, binder_devices_param);
+	if (!IS_ENABLED(CONFIG_ANDROID_BINDERFS) &&
+	    strcmp(binder_devices_param, "") != 0) {
+		/*
+		* Copy the module_parameter string, because we don't want to
+		* tokenize it in-place.
+		 */
+		device_names = kstrdup(binder_devices_param, GFP_KERNEL);
+		if (!device_names) {
+			ret = -ENOMEM;
+			goto err_alloc_device_names_failed;
+		}
 
-	device_tmp = device_names;
-	while ((device_name = strsep(&device_tmp, ","))) {
-		ret = init_binder_device(device_name);
-		if (ret)
-			goto err_init_binder_device_failed;
+		device_tmp = device_names;
+		while ((device_name = strsep(&device_tmp, ","))) {
+			ret = init_binder_device(device_name);
+			if (ret)
+				goto err_init_binder_device_failed;
+		}
 	}
+
+	ret = init_binderfs();
+	if (ret)
+		goto err_init_binder_device_failed;
 
 	return ret;
 

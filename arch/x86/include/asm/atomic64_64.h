@@ -72,7 +72,7 @@ static inline void atomic64_sub(long i, atomic64_t *v)
  */
 static inline int atomic64_sub_and_test(long i, atomic64_t *v)
 {
-	GEN_BINARY_RMWcc(LOCK_PREFIX "subq", v->counter, "er", i, "%0", "e");
+	GEN_BINARY_RMWcc(LOCK_PREFIX "subq", v->counter, "er", i, "%0", e);
 }
 
 /**
@@ -111,7 +111,7 @@ static __always_inline void atomic64_dec(atomic64_t *v)
  */
 static inline int atomic64_dec_and_test(atomic64_t *v)
 {
-	GEN_UNARY_RMWcc(LOCK_PREFIX "decq", v->counter, "%0", "e");
+	GEN_UNARY_RMWcc(LOCK_PREFIX "decq", v->counter, "%0", e);
 }
 
 /**
@@ -124,7 +124,7 @@ static inline int atomic64_dec_and_test(atomic64_t *v)
  */
 static inline int atomic64_inc_and_test(atomic64_t *v)
 {
-	GEN_UNARY_RMWcc(LOCK_PREFIX "incq", v->counter, "%0", "e");
+	GEN_UNARY_RMWcc(LOCK_PREFIX "incq", v->counter, "%0", e);
 }
 
 /**
@@ -138,7 +138,7 @@ static inline int atomic64_inc_and_test(atomic64_t *v)
  */
 static inline int atomic64_add_negative(long i, atomic64_t *v)
 {
-	GEN_BINARY_RMWcc(LOCK_PREFIX "addq", v->counter, "er", i, "%0", "s");
+	GEN_BINARY_RMWcc(LOCK_PREFIX "addq", v->counter, "er", i, "%0", s);
 }
 
 /**
@@ -164,6 +164,12 @@ static inline long atomic64_sub_return(long i, atomic64_t *v)
 static inline long atomic64_cmpxchg(atomic64_t *v, long old, long new)
 {
 	return cmpxchg(&v->counter, old, new);
+}
+
+#define atomic64_try_cmpxchg atomic64_try_cmpxchg
+static __always_inline bool atomic64_try_cmpxchg(atomic64_t *v, long *old, long new)
+{
+	return try_cmpxchg(&v->counter, old, new);
 }
 
 static inline long atomic64_xchg(atomic64_t *v, long new)

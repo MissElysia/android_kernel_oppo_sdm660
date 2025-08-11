@@ -2689,12 +2689,17 @@ static bool shrink_zone(struct zone *zone, struct scan_control *sc,
 		 */
 		vmpressure(sc->gfp_mask, sc->target_mem_cgroup,
 			   sc->nr_scanned - nr_scanned,
-			   sc->nr_reclaimed - nr_reclaimed);
+			   sc->nr_reclaimed - nr_reclaimed,
+			   sc->order);
 
 		if (reclaim_state) {
 			sc->nr_reclaimed += reclaim_state->reclaimed_slab;
 			reclaim_state->reclaimed_slab = 0;
 		}
+
+		vmpressure(sc->gfp_mask, sc->target_mem_cgroup,
+			   sc->nr_scanned - nr_scanned,
+			   sc->nr_reclaimed - nr_reclaimed, sc->order);
 
 		if (sc->nr_reclaimed - nr_reclaimed)
 			reclaimable = true;
@@ -2891,7 +2896,7 @@ retry:
 
 	do {
 		vmpressure_prio(sc->gfp_mask, sc->target_mem_cgroup,
-				sc->priority);
+				sc->priority, sc->order);
 		sc->nr_scanned = 0;
 		zones_reclaimable = shrink_zones(zonelist, sc);
 
@@ -2947,7 +2952,7 @@ retry:
 	return 0;
 }
 
-static bool pfmemalloc_watermark_ok(pg_data_t *pgdat)
+static bool pfmemalloc_watermark_ok(pg_data_t *pgdat, bool using_kswapd)
 {
 	struct zone *zone;
 	unsigned long pfmemalloc_reserve = 0;
@@ -2970,6 +2975,10 @@ static bool pfmemalloc_watermark_ok(pg_data_t *pgdat)
 		return true;
 
 	wmark_ok = free_pages > pfmemalloc_reserve / 2;
+
+	/* The throttled direct reclaimer is now a kswapd waiter */
+	if (unlikely(!using_kswapd && !wmark_ok))
+		atomic_long_inc(&kswapd_waiters);
 
 	/* kswapd must be awake if processes are being throttled */
 	if (!wmark_ok && waitqueue_active(&pgdat->kswapd_wait)) {
@@ -3035,7 +3044,7 @@ static bool throttle_direct_reclaim(gfp_t gfp_mask, struct zonelist *zonelist,
 
 		/* Throttle based on the first usable node */
 		pgdat = zone->zone_pgdat;
-		if (pfmemalloc_watermark_ok(pgdat))
+		if (pfmemalloc_watermark_ok(pgdat, gfp_mask & __GFP_KSWAPD_RECLAIM))
 			goto out;
 		break;
 	}
@@ -3057,16 +3066,18 @@ static bool throttle_direct_reclaim(gfp_t gfp_mask, struct zonelist *zonelist,
 	 */
 	if (!(gfp_mask & __GFP_FS)) {
 		wait_event_interruptible_timeout(pgdat->pfmemalloc_wait,
-			pfmemalloc_watermark_ok(pgdat), HZ);
+			pfmemalloc_watermark_ok(pgdat, true), HZ);
 
 		goto check_pending;
 	}
 
 	/* Throttle until kswapd wakes the process */
 	wait_event_killable(zone->zone_pgdat->pfmemalloc_wait,
-		pfmemalloc_watermark_ok(pgdat));
+		pfmemalloc_watermark_ok(pgdat, true));
 
 check_pending:
+	if (unlikely(!(gfp_mask & __GFP_KSWAPD_RECLAIM)))
+		atomic_long_dec(&kswapd_waiters);
 	if (fatal_signal_pending(current))
 		return true;
 
@@ -3529,11 +3540,12 @@ static int balance_pgdat(pg_data_t *pgdat, int order, int classzone_idx)
 		 * able to safely make forward progress. Wake them
 		 */
 		if (waitqueue_active(&pgdat->pfmemalloc_wait) &&
-				pfmemalloc_watermark_ok(pgdat))
+				pfmemalloc_watermark_ok(pgdat, true))
 			wake_up_all(&pgdat->pfmemalloc_wait);
 
 		/* Check if kswapd should be suspending */
-		if (try_to_freeze() || kthread_should_stop())
+		if (try_to_freeze() || kthread_should_stop() ||
+		    !atomic_long_read(&kswapd_waiters))
 			break;
 
 		/*
@@ -3565,22 +3577,7 @@ static void kswapd_try_to_sleep(pg_data_t *pgdat, int order,
 	prepare_to_wait(&pgdat->kswapd_wait, &wait, TASK_INTERRUPTIBLE);
 
 	/* Try to sleep for a short interval */
-	if (prepare_kswapd_sleep(pgdat, order, remaining,
-						balanced_classzone_idx)) {
-		/*
-		 * Compaction records what page blocks it recently failed to
-		 * isolate pages from and skips them in the future scanning.
-		 * When kswapd is going to sleep, it is reasonable to assume
-		 * that pages and compaction may succeed so reset the cache.
-		 */
-		reset_isolation_suitable(pgdat);
-
-		/*
-		 * We have freed the memory, now we should compact it to make
-		 * allocation of the requested order possible.
-		 */
-		wakeup_kcompactd(pgdat, order, classzone_idx);
-
+	if (prepare_kswapd_sleep(pgdat, order, remaining, balanced_classzone_idx)) {
 		remaining = schedule_timeout(HZ/10);
 		finish_wait(&pgdat->kswapd_wait, &wait);
 		prepare_to_wait(&pgdat->kswapd_wait, &wait, TASK_INTERRUPTIBLE);
@@ -3590,8 +3587,7 @@ static void kswapd_try_to_sleep(pg_data_t *pgdat, int order,
 	 * After a short sleep, check if it was a premature sleep. If not, then
 	 * go fully to sleep until explicitly woken up.
 	 */
-	if (prepare_kswapd_sleep(pgdat, order, remaining,
-						balanced_classzone_idx)) {
+	if (prepare_kswapd_sleep(pgdat, order, remaining, balanced_classzone_idx)) {
 		trace_mm_vmscan_kswapd_sleep(pgdat->node_id);
 
 		/*
