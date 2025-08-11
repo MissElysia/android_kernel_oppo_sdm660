@@ -3565,7 +3565,6 @@ extern void init_dl_bw(struct dl_bw *dl_b);
  */
 void wake_up_new_task(struct task_struct *p)
 {
-	unsigned long flags;
 	struct rq_flags rf;
 	struct rq *rq;
 
