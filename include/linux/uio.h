@@ -125,6 +125,12 @@ static inline bool iter_is_iovec(const struct iov_iter *i)
  * greater than the amount of data in iov_iter is fine - it'll just do
  * nothing in that case.
  */
+static inline void iov_iter_revert(struct iov_iter *i, size_t unadvance)
+{
+    i->iov_offset -= unadvance;
+    i->count += unadvance;
+}
+
 static inline void iov_iter_truncate(struct iov_iter *i, u64 count)
 {
 	/*
