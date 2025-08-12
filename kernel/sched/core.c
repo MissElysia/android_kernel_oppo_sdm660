@@ -9035,9 +9035,6 @@ void __init sched_init(void)
 
 	BUG_ON(num_possible_cpus() > BITS_PER_LONG);
 
-	sched_boost_parse_dt();
-	init_clusters();
-
 #ifdef CONFIG_SCHED_BORE
 	sched_init_bore();
 	printk(KERN_INFO "BORE (Burst-Oriented Response Enhancer) CPU Scheduler modification 3.1.8 by Masahito Suzuki");
