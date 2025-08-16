@@ -86,6 +86,12 @@ config ANDROID_SIMPLE_LMK_TIMEOUT_MSEC
 
 endif
 
+config REKERNEL
+    tristate "The RE:Kernel with Android"
+	default n
+	---help---
+      This is a switch to enable the RE:Kernel.
+
 endif # if ANDROID
 
 endmenu

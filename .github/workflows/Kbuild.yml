@@ -3,8 +3,17 @@ on:
   workflow_call:
   workflow_dispatch:
     inputs:
+      rekernel:
+        type: choice
+        description: '是否开启RE:Kernel'                
+        required: true
+        default: 'false'        
+        options:
+        - 'true'
+        - 'false'
       device:
         type: choice
+        description: 'DEVICE_NAME'        
         required: true
         options:
         - 'OPPO R11'
@@ -31,7 +40,7 @@ on:
         - '17023'
 
 jobs:
-  build:
+  install:
     name: ${{ github.actor }}編譯嘅${{ github.event.inputs.device }}核心
     runs-on: ubuntu-22.04
     steps:
@@ -58,7 +67,7 @@ jobs:
           wget https://github.com/ZyCromerZ/Clang/releases/download/20.0.0git-20241109-release/Clang-20.0.0git-20241109.tar.gz -O $GITHUB_WORKSPACE/workdir/zyc_clang20.tar.gz
           mkdir $GITHUB_WORKSPACE/workdir/clang
           tar zxvf $GITHUB_WORKSPACE/workdir/zyc_clang20.tar.gz -C $GITHUB_WORKSPACE/workdir/clang
-
+  
       - name: 獲取${{ github.event.inputs.device }}嘅核心源碼
         run: |
           git clone --recursive https://github.com/$GITHUB_REPOSITORY/ -b ${{ steps.branch-names.outputs.current_branch }} --depth 1 $GITHUB_WORKSPACE/workdir/source
@@ -68,6 +77,12 @@ jobs:
         with:
          key: build-kernel-mido-kernel
          max-size: 2G
+
+      - name: 添加RE:Kernel功能
+        run: |
+          if [ "${{ github.event.inputs.rekernel }}" == "true" ]; then
+             echo -e "\nCONFIG_REKERNEL=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
+          fi
 
       - name: 編譯${{ github.event.inputs.device }}核心
         run: |
