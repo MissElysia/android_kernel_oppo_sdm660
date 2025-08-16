@@ -294,7 +294,9 @@ static void msm_restart_prepare(const char *cmd)
 				(cmd != NULL && cmd[0] != '\0'));
 	}
 
+#ifdef CONFIG_ELYSIA_DEBUG
 	need_warm_reset = true;
+#endif
 
 	/* Hard reset the PMIC unless memory contents must be maintained. */
 	if (true) {
@@ -303,6 +305,7 @@ static void msm_restart_prepare(const char *cmd)
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 	}
 
+#ifdef CONFIG_ELYSIA_DEBUG
 	/* Debug */
 	qpnp_pon_set_restart_reason(
 		PON_RESTART_REASON_RECOVERY);
@@ -313,6 +316,7 @@ static void msm_restart_prepare(const char *cmd)
 	outer_flush_all();
 #endif
 	return;
+#endif
 
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {

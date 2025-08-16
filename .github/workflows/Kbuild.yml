@@ -11,6 +11,14 @@ on:
         options:
         - 'true'
         - 'false'
+      debug:
+        type: choice
+        description: '是否开启快速进入recovery模式'                
+        required: true
+        default: 'false'        
+        options:
+        - 'true'
+        - 'false'        
       device:
         type: choice
         description: 'DEVICE_NAME'        
@@ -82,6 +90,12 @@ jobs:
         run: |
           if [ "${{ github.event.inputs.rekernel }}" == "true" ]; then
              echo -e "\nCONFIG_REKERNEL=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
+          fi
+
+      - name: 添加快速进入recovery模式功能
+        run: |
+          if [ "${{ github.event.inputs.debug }}" == "true" ]; then
+             echo -e "\nCONFIG_ELYSIA_DEBUG=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
           fi
 
       - name: 編譯${{ github.event.inputs.device }}核心
