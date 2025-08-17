@@ -136,8 +136,7 @@ jobs:
           fi
 
       - name: 修補KPM
-        if: env.CHECK_FILE_IS_OK == 'true'
-        if: env.inputs.kpm == 'true'
+        if: env.CHECK_FILE_IS_OK == 'true' && env.inputs.kpm == 'true'
         run: |
           mkdir $GITHUB_WORKSPACE/workdir/SukiSU-Patch
           cd $GITHUB_WORKSPACE/workdir/SukiSU-Patch
