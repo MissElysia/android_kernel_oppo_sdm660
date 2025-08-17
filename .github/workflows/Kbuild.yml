@@ -29,7 +29,7 @@ on:
         - 'false'                
       device:
         type: choice
-        description: 'DEVICE_NAME'        
+        description: '設備名稱'        
         required: true
         options:
         - 'OPPO R11'
@@ -42,7 +42,7 @@ on:
         - 'OPPO R11sPlust'
       target:
         type: choice
-        description: 'OPPO_TARGET_DEVICE'
+        description: '設備內核代號'
         required: true
         options:
         - '16051'
@@ -137,8 +137,8 @@ jobs:
 
       - name: 修補KPM
         if: env.CHECK_FILE_IS_OK == 'true'
+        if: env.inputs.kpm == 'true'
         run: |
-          if [ "${{ github.event.inputs.rekernel }}" == "true" ]; then        
           mkdir $GITHUB_WORKSPACE/workdir/SukiSU-Patch
           cd $GITHUB_WORKSPACE/workdir/SukiSU-Patch
           curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kpm/patch_linux" -o patch_linux
@@ -149,10 +149,10 @@ jobs:
           mv -f oImage Image
           gzip -k Image Image.gz
           cat Image.gz *.dtb > Image.gz-dtb
-          fi
 
       - name: 上傳${{ github.event.inputs.device }}嘅內核
         if: env.CHECK_FILE_IS_OK == 'true'
+        if: env.inputs.kpm == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: android_kernel_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}_Image.gz-dtb
@@ -160,6 +160,7 @@ jobs:
 
       - name: 制作${{ github.event.inputs.device }}嘅Anykernel3文檔
         if: env.CHECK_FILE_IS_OK == 'true'
+        if: env.inputs.kpm == 'true'
         run: |
           git clone https://github.com/$GITHUB_REPOSITORY/ -b prebuilt_ak3 --depth 1 $GITHUB_WORKSPACE/workdir/ak3
           rm -r $GITHUB_WORKSPACE/workdir/ak3/.git
@@ -167,7 +168,32 @@ jobs:
 
       - name: 上傳${{ github.event.inputs.device }}嘅AnyKernel3文檔
         if: env.CHECK_FILE_IS_OK == 'true'
+        if: env.inputs.kpm == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: AnyKernel3_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}
+          path: workdir/ak3/*
+          
+      - name: 上傳${{ github.event.inputs.device }}無KPM嘅內核
+        if: env.CHECK_FILE_IS_OK == 'true'
+        if: env.inputs.kpm == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android_kernel_oppo_sdm660_16051_${{ env.BUILD_TIME }}_Image.gz-dtb
+          path: workdir/source/out/arch/arm64/boot/Image.gz-dtb
+
+      - name: 制作${{ github.event.inputs.device }}無KPM嘅Anykernel3文檔
+        if: env.CHECK_FILE_IS_OK == 'true'
+        if: env.inputs.kpm == 'false'
+        run: |
+          git clone https://github.com/$GITHUB_REPOSITORY/ -b prebuilt_ak3 --depth 1 $GITHUB_WORKSPACE/workdir/ak3
+          rm -r $GITHUB_WORKSPACE/workdir/ak3/.git
+          cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/Image.gz-dtb $GITHUB_WORKSPACE/workdir/ak3
+
+      - name: 上傳${{ github.event.inputs.device }}無KPM嘅AnyKernel3文檔
+        if: env.CHECK_FILE_IS_OK == 'true'
+        if: env.inputs.kpm == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnyKernel3_oppo_sdm660_16051_${{ env.BUILD_TIME }}
           path: workdir/ak3/*
