@@ -132,7 +132,7 @@ jobs:
 
       - name: 添加 Sukisu Ultra
         run: |
-          if [ "${{ github.event.inputs.ksubranch }}" == "suskisu" ]; then
+          if [ "${{ github.event.inputs.ksubranch }}" == "sukisu" ]; then
              cd $GITHUB_WORKSPACE/workdir/source             
              curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/d2ab325e1863c6abae1935d5f617a92fb1574983/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
              cd $GITHUB_WORKSPACE/workdir
