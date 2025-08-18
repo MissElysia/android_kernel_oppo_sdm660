@@ -33,7 +33,7 @@ on:
         required: true
         default: 'sukisu'        
         options:
-        - 'nongki'
+        - 'rissu'
         - 'sukisu'
       branch:
         type: choice
