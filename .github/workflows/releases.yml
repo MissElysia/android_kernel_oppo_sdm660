@@ -211,7 +211,7 @@ jobs:
              cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/Image.gz-dtb $GITHUB_WORKSPACE/workdir/ak3
           fi
           cd "$GITHUB_WORKSPACE/workdir/ak3"
-          zip -r9 "AnyKernel3_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}.zip" ./* 
+          zip -r9 "AnyKernel3_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}.zip"
 
       - name: 上傳 ${{ github.event.inputs.device }} 嘅 AnyKernel3 文檔
         if: env.CHECK_FILE_IS_OK == 'true'
