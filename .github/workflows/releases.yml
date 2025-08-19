@@ -217,41 +217,10 @@ jobs:
         with:
           name: AnyKernel3_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}
           path: workdir/ak3/*
-          
-      - name:  上傳鏡像文檔
-        uses: actions/upload-artifact@v4
-        with:
-          name: Kernel_ZIP_Artifacts
-          path: |
-            workdir/ak3/*.zip
-            workdir/source/kernel.log
-          retention-days: 1
 
-  release:
-    needs: build
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: write
-      packages: write
-      actions: read
-
-    steps:
-      - name: 下載文檔
-        uses: actions/download-artifact@v4
+      - name: 發布Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: Kernel_ZIP_Artifacts
-          path: ./release_zips
-
-      - name: 創建發布頁
-        id: create_release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: "build-${{ github.run_id }}"
-          name: "${{ github.event.inputs.device }} 第 ${{ github.run_number }} 版"
-          body: |
-            OPPO-Snapdragon660-Android-Pie の 核心與 Anykernel3 文檔
-          draft: false
-          prerelease: false
+          token: ${{ secrets.TOKEN }}
           files: |
-            release_zips/AnyKernel3_oppo_sdm660_*.zip
-            release_zips/android_kernel_oppo_sdm660_*.zip
+            $GITHUB_WORKSPACE/workdir/ak3/AnyKernel3_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}.zip
