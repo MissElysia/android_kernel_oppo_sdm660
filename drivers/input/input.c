@@ -30,6 +30,10 @@
 #include "input-compat.h"
 #include <linux/reboot.h>
 
+#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
+#include <../../drivers/kernelsu/ksu_trace.h>
+#endif
+
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
 MODULE_DESCRIPTION("Input core");
 MODULE_LICENSE("GPL");
@@ -369,33 +373,50 @@ static int input_get_disposition(struct input_dev *dev,
 	return disposition;
 }
 
-#ifdef CONFIG_KSU
+#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
 extern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);
 #endif
 
 #ifdef CONFIG_ELYSIA_DEBUG
 static bool debug_input_hook __read_mostly = true;
 static unsigned int powerkey_pressed_count = 0;
+static unsigned int volup_pressed_count = 0;
 static unsigned long first_press_time = 0;
 
 static int debug_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value) {
-    if (*type == EV_KEY && *code == KEY_POWER && *value == 1) {
+    if (*type == EV_KEY) {
         unsigned long current_time = jiffies;
 
-        if (time_after(current_time, first_press_time + HZ)) {
-            powerkey_pressed_count = 1;
-            first_press_time = current_time;
-        } else {
-            powerkey_pressed_count++;
+        // 电源键按下统计
+        if (*code == KEY_POWER && *value == 1) {
+            if (time_after(current_time, first_press_time + HZ)) {
+                powerkey_pressed_count = 1;
+                first_press_time = current_time;
+            } else {
+                powerkey_pressed_count++;
+            }
+            pr_info("Power key pressed %u times in last %lu ms\n",
+                   powerkey_pressed_count,
+                   jiffies_to_msecs(current_time - first_press_time));
         }
 
-        pr_info("Power key pressed %u times in last %lu ms\n",
-               powerkey_pressed_count,
-               jiffies_to_msecs(current_time - first_press_time));
+        // 音量+键按下统计
+        if (*code == KEY_VOLUMEUP && *value == 1) {
+            if (time_after(current_time, first_press_time + HZ)) {
+                volup_pressed_count = 1;
+                first_press_time = current_time;
+            } else {
+                volup_pressed_count++;
+            }
+            pr_info("Volume Up pressed %u times in last %lu ms\n",
+                   volup_pressed_count,
+                   jiffies_to_msecs(current_time - first_press_time));
+        }
 
-        if (powerkey_pressed_count >= 3) {
-            pr_info("Power key pressed 3 times in 1s, triggering restart\n");
-            machine_restart("Debug: Triple power key press");
+        // 检查是否同时按了3次（或更多）电源键和音量+键
+        if (powerkey_pressed_count >= 3 && volup_pressed_count >= 3) {
+            pr_info("Power + VolumeUp pressed 3 times in 1s, triggering restart\n");
+            machine_restart("Debug: Triple power + volup key press");
         }
     }
     return 0;
@@ -412,7 +433,7 @@ if (unlikely(debug_input_hook))
 
 	disposition = input_get_disposition(dev, type, code, &value);
 
-#ifdef CONFIG_KSU
+#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
 	ksu_handle_input_handle_event(&type, &code, &value);
 #endif
 
@@ -471,6 +492,10 @@ void input_event(struct input_dev *dev,
 		 unsigned int type, unsigned int code, int value)
 {
 	unsigned long flags;
+
+#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
+    trace_ksu_trace_input_hook(&type, &code, &value);
+#endif
 
 	if (is_event_supported(type, dev->evbit, EV_MAX)) {
 

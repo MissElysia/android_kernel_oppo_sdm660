@@ -43,6 +43,14 @@ on:
         options:
         - 'nongki'
         - 'main'
+      hook:
+        type: choice
+        description: '請選擇KernelSU的hook方式'                
+        required: true
+        default: 'manual'        
+        options:
+        - 'manual'
+        - 'tracepoint'        
       device:
         type: choice
         description: '設備名稱'        
@@ -136,6 +144,15 @@ jobs:
              cd $GITHUB_WORKSPACE/workdir/source             
              curl -LSs "https://raw.githubusercontent.com/mihoy3rd/SukiSU-Ultra/nongki/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
              cd $GITHUB_WORKSPACE/workdir
+          fi
+
+      - name: 應用hook方式
+        run: |
+          if [ "${{ github.event.inputs.hook }}" == "manual" ]; then
+             echo -e "\nCONFIG_KSU_MANUAL_HOOK=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
+          fi
+          if [ "${{ github.event.inputs.hook }}" == "tracepoint" ]; then
+             echo -e "\CONFIG_KSU_TRACEPOINT_HOOK=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
           fi
 
       - name: 編譯${{ github.event.inputs.device }}核心
