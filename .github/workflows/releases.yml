@@ -219,8 +219,10 @@ jobs:
           path: workdir/ak3/*
 
       - name: 發布Release
-        uses: softprops/action-gh-release@v2
+        id: create_release
+        uses: softprops/action-gh-release@v1
         with:
+          tag_name: "build-${{ github.run_id }}"
           token: ${{ secrets.TOKEN }}
           files: |
             $GITHUB_WORKSPACE/workdir/ak3/AnyKernel3_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}.zip
