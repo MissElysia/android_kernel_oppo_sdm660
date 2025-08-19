@@ -229,6 +229,59 @@ jobs:
         with:
           tag_name: "build-${{ github.run_id }}"
           name: "Kernel Build for ${{ github.event.inputs.device }} (${{ env.BUILD_TIME }})"        
+        body: |
+          # 🚀 ${{ github.event.inputs.device }} 内核發佈
+
+          **構建編號**: ${{ github.run_number }}  
+          **設備型號**: ${{ github.event.inputs.device }}  
+          **設備代號**: ${{ github.event.inputs.target }}  
+          **構建時間**: ${{ needs.build.outputs.BUILD_TIME }}  
+
+          ## ⚙️ 構建配置
+          | 功能 | 狀態 |
+          |------|------|
+          | Root實現 | ${{ github.event.inputs.ksubranch }} |
+          | Hook 方式 | ${{ github.event.inputs.hook }} |
+          | RE:Kernel狀態 | ${{ github.event.inputs.rekernel }} |
+          | 調試模式 | ${{ github.event.inputs.debug }} |
+          | KPM狀態 | ${{ github.event.inputs.kpm }} |
+          | BPF | linux5.4-netbpf |
+
+          ## 📦 文件說明
+          - **ZIP 文件**: 完整刷機包 (AnyKernel3)
+
+          ## 🔧 刷機說明
+          1. 下載 ZIP 文件
+          2. 進入 Recovery 模式
+          3. 刷入内核包
+          4. 重啟裝置
+        body: |
+          # 🚀 ${{ github.event.inputs.device }} 内核發佈
+
+          **構建編號**: ${{ github.run_number }}  
+          **設備型號**: ${{ github.event.inputs.device }}  
+          **設備代號**: ${{ github.event.inputs.target }}  
+          **構建時間**: ${{ needs.build.outputs.BUILD_TIME }}  
+
+          ## ⚙️ 構建配置
+          | 功能 | 狀態 |
+          |------|------|
+          | Root實現 | ${{ github.event.inputs.ksubranch }} |
+          | Hook 方式 | ${{ github.event.inputs.hook }} |
+          | RE:Kernel狀態 | ${{ github.event.inputs.rekernel }} |
+          | 調試模式 | ${{ github.event.inputs.debug }} |
+          | KPM狀態 | ${{ github.event.inputs.kpm }} |
+          | BPF | linux5.4-netbpf |
+
+          ## 📦 文件說明
+          - **ZIP 文件**: 完整刷機包 (AnyKernel3)
+
+          ## 🔧 刷機說明
+          1. 下載 ZIP 文件
+          2. 進入 Recovery 模式
+          3. 刷入内核包
+          4. 重啟裝置
+
           token: ${{ secrets.TOKEN }}
           files: |
             ${{ github.workspace }}/workdir/Anykernel3_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}.zip
