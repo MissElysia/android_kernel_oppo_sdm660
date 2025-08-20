@@ -1,5 +1,6 @@
 <img align='left' src='ElysiaMei.jpg' width='180px' alt="logo">
-# SukiSU Ultra
+
+# OPPO R11/s 系列核心源碼
 
 **粵語**
 
