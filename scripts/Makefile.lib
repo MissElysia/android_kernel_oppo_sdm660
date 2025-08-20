@@ -4,6 +4,22 @@ ccflags-y  += $(EXTRA_CFLAGS)
 cppflags-y += $(EXTRA_CPPFLAGS)
 ldflags-y  += $(EXTRA_LDFLAGS)
 
+ifeq ($(OPPO_TARGET_DEVICE),MSM_16051 MSM_16052)
+  ELYSIA_DTC += -DDTS_16051
+endif
+ifeq ($(OPPO_TARGET_DEVICE),MSM_17011 MSM_17013)
+  ELYSIA_DTC += -DDTS_17011
+endif
+ifeq ($(OPPO_TARGET_DEVICE),MSM_16103)
+  ELYSIA_DTC += -DDTS_16103
+endif
+ifeq ($(OPPO_TARGET_DEVICE),MSM_16118 MSM_16116)
+  ELYSIA_DTC += -DDTS_16118
+endif
+ifeq ($(OPPO_TARGET_DEVICE),MSM_17021 MSM_17023)
+  ELYSIA_DTC += -DDTS_17021
+endif
+
 #
 # flags that take effect in sub directories
 export KBUILD_SUBDIR_ASFLAGS := $(KBUILD_SUBDIR_ASFLAGS) $(subdir-asflags-y)
@@ -306,7 +322,7 @@ endif
 
 quiet_cmd_dtc = DTC     $@
 cmd_dtc = mkdir -p $(dir ${dtc-tmp}) ; \
-	$(CPP) $(dtc_cpp_flags) -x assembler-with-cpp -o $(dtc-tmp) $< ; \
+	$(CPP) $(dtc_cpp_flags) $(ELYSIA_DTC) -x assembler-with-cpp -o $(dtc-tmp) $< ; \
 	$(DTC) -O dtb -o $@ -b 0 \
 		-i $(dir $<) $(DTC_FLAGS) \
 		-d $(depfile).dtc.tmp $(dtc-tmp) ; \
