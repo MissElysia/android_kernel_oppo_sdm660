@@ -111,13 +111,8 @@ else
 fi
 
 
-ui_print "KSU救援模式状态:可用"
-ui_print "SUSFS状态:×"
-ui_print "第三方运存算法状态:×"
-ui_print "VFS状态:×"
-ui_print "GKI版本:1.0/nongki"
+ui_print "GKI版本:pre-gki/nongki"
 ui_print "刷入方式:卡刷"
-ui_print "QQ群:995160937"
 ui_print "设备供应商:OPPO"
 
 if command -v getprop >/dev/null 2>&1; then
@@ -135,7 +130,7 @@ ui_print "Recovery支持的Android版本:$recovery_version"
 kernel_info=$(cat /proc/version 2>/dev/null)
 
 if [ -n "$kernel_info" ]; then
-    ui_print "内核版本信息: $kernel_info"
+    ui_print "Recovery内核版本信息: $kernel_info"
 else
     ui_print "未知版本!"
 fi
@@ -185,7 +180,7 @@ fi
 ui_print "屏幕供应商:Samsung"
 ui_print "请在非国产系统上使用!!!"
 ui_print "禁止倒卖,欢迎举报!"
-ui_print "嗨想我了吗?无论何时何地爱莉希雅都会回应你的期待!"
+ui_print "嗨~想我了吗?无论何时何地爱莉希雅都会回应你的期待♪"
 
 sleep 5
 
