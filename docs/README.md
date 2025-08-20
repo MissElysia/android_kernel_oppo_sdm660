@@ -1,4 +1,4 @@
-<img align='left' src='ElysiaMei.jpg' width='125px' alt="logo">
+<img align='left' src='ElysiaMei.jpg' width='180px' alt="logo">
 # SukiSU Ultra
 
 **粵語**
