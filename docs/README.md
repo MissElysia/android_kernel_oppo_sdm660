@@ -5,7 +5,7 @@
 
 驍龍660嘅oppo核心源碼倉庫, 裝置驅動來自 [`oppo-source`](https://github.com/oppo-source), 並進行了一些小改動.
 
-[![Latest release](https://img.shields.io/github/v/release/SukiSU-Ultra/SukiSU-Ultra?label=Release&logo=github)](https://github.com/MissElysia/android_kernel_oppo_sdm660/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/MissElysia/android_kernel_oppo_sdm660?label=Release&logo=github)](https://github.com/MissElysia/android_kernel_oppo_sdm660/releases/latest)
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-orange.svg?logo=gnu)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 [![GitHub License](https://img.shields.io/github/license/tiann/KernelSU?logo=gnu)](/LICENSE)
 
@@ -17,13 +17,13 @@
 ## 第三方支援
 
 1. 使用 Sukisu Ultra/Rissu 作為默認 Root 支援.
-2. 合併 5.4 的 netbpf 與 BinderFS.
+2. 合併 5.4 嘅 netbpf 與 BinderFS.
 3. 加入eas 調度.
 4. 使用 Capacity Aware Superset Scheduler+utilization clamping for RT/FAIR task.
 5. KPM 支援.
 6. 使用 Simple Android Low Memory Killer.
 7. 使用 Cgroup v2 與 freeze v2.
-8. 添加額外的 I/O 調度器 與 boeffla wakelock bl Ocker.
+8. 添加額外嘅 I/O 調度器 與 boeffla wakelock bl Ocker.
 9. 開啟 pstore 支援.
 10. 添加 erofs 文件系統.
 11. 添加 SBalance IRQ balancer.
@@ -32,7 +32,7 @@
 
 ## 核心支援情況
 
-- 基於 Android Pie 的 CAF.
+- 基於 Android Pie 嘅 CAF.
 
 - 核心主線： Linux-4.4.y.
 
