@@ -3,6 +3,14 @@ on:
   workflow_call:
   workflow_dispatch:
     inputs:
+      dtb:
+        type: choice
+        description: '是否備份 DTB'                
+        required: true
+        default: 'true'        
+        options:
+        - 'true'
+        - 'false'
       rekernel:
         type: choice
         description: '是否开启 RE:Kernel'                
@@ -217,3 +225,19 @@ jobs:
         with:
           name: AnyKernel3_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}
           path: workdir/ak3/*
+          
+      - name: 制作 DTB 備份
+        if: env.CHECK_FILE_IS_OK == 'true'
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/workdir/dtb
+          cd $GITHUB_WORKSPACE/workdir/dtb
+          if [ "${{ github.event.inputs.dtb }}" == "true" ]; then 
+             cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/dts/1*/*.dtb .
+          fi
+
+      - name: 上傳 DTB 備份
+        if: env.CHECK_FILE_IS_OK == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnyKernel3_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}
+          path: workdir/dtb/*
