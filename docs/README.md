@@ -1,1 +1,1 @@
-<img align='right' src='ElysiaMei.jpg' width='1400dp' alt="logo">
+<img align='right' src='ElysiaMei.jpg' width='500px' alt="logo">
