@@ -1,4 +1,4 @@
-<img align='left' src='ElysiaMei.jpg' width='150px' alt="logo">
+<img align='left' src='ElysiaMei.jpg' width='125px' alt="logo">
 # SukiSU Ultra
 
 **粵語**
@@ -36,7 +36,7 @@
 
 - 核心主線： Linux-4.4.y.
 
-- 硬件驅動供應： Qualcomm 與 OPPO.
+- 硬件驅動供應： [Qualcomm](https://git.codelinaro.org/clo/la/kernel/msm-4.4) 與 [OPPO](https://github.com/oppo-source).
 
 - 裝置架構： arm64-v8.
 
@@ -44,6 +44,8 @@
 
 - [愛莉希雅](https://github.com/mihoy3rd)
 - [WenHao](https://github.com/WenHao2130)
+- [WenHao-dev](https://github.com/WenHao-dev)
 - [CY](https://github.com/ltdq)
 - [Color](https://github.com/color597)
 - [oppo-source](https://github.com/oppo-source)
+- [Qualcomm](https://git.codelinaro.org/clo/la/kernel/qcom)
