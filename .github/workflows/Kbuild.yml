@@ -232,7 +232,7 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/workdir/dtb
           cd $GITHUB_WORKSPACE/workdir/dtb
           if [ "${{ github.event.inputs.dtb }}" == "true" ]; then 
-             cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/dts/1*/*.dtb .
+             cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/dts/1*/*.dtb $GITHUB_WORKSPACE/workdir/dtb
           fi
 
       - name: 上傳 DTB 備份
