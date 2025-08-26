@@ -50,7 +50,8 @@ on:
         default: 'nongki'        
         options:
         - 'nongki'
-        - 'susfs-main'        
+        - 'susfs-main'
+        - 'susfs-test'                
         - 'main'
       hook:
         type: choice
