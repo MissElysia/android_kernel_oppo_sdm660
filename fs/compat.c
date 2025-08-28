@@ -881,27 +881,6 @@ efault:
 	return -EFAULT;
 }
 
-COMPAT_SYSCALL_DEFINE3(old_readdir, unsigned int, fd,
-		struct compat_old_linux_dirent __user *, dirent, unsigned int, count)
-{
-	int error;
-	struct fd f = fdget(fd);
-	struct compat_readdir_callback buf = {
-		.ctx.actor = compat_fillonedir,
-		.dirent = dirent
-	};
-
-	if (!f.file)
-		return -EBADF;
-
-	error = iterate_dir(f.file, &buf.ctx);
-	if (buf.result)
-		error = buf.result;
-
-	fdput(f);
-	return error;
-}
-
 struct compat_linux_dirent {
 	compat_ulong_t	d_ino;
 	compat_ulong_t	d_off;
@@ -959,39 +938,6 @@ static int compat_filldir(struct dir_context *ctx, const char *name, int namlen,
 efault:
 	buf->error = -EFAULT;
 	return -EFAULT;
-}
-
-COMPAT_SYSCALL_DEFINE3(getdents, unsigned int, fd,
-		struct compat_linux_dirent __user *, dirent, unsigned int, count)
-{
-	struct fd f;
-	struct compat_linux_dirent __user * lastdirent;
-	struct compat_getdents_callback buf = {
-		.ctx.actor = compat_filldir,
-		.current_dir = dirent,
-		.count = count
-	};
-	int error;
-
-	if (!access_ok(VERIFY_WRITE, dirent, count))
-		return -EFAULT;
-
-	f = fdget(fd);
-	if (!f.file)
-		return -EBADF;
-
-	error = iterate_dir(f.file, &buf.ctx);
-	if (error >= 0)
-		error = buf.error;
-	lastdirent = buf.previous;
-	if (lastdirent) {
-		if (put_user(buf.ctx.pos, &lastdirent->d_off))
-			error = -EFAULT;
-		else
-			error = count - buf.count;
-	}
-	fdput(f);
-	return error;
 }
 
 #ifdef __ARCH_WANT_COMPAT_SYS_GETDENTS64
