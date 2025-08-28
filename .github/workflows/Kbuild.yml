@@ -146,8 +146,7 @@ jobs:
              cd $GITHUB_WORKSPACE/workdir/source             
              curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
              cd $GITHUB_WORKSPACE/workdir/source/KernelSU
-             wget https://github.com/user-attachments/files/22021901/sepolicy.patch.txt
-             patch -p1 < sepolicy.patch.txt
+             wget https://github.com/user-attachments/files/22022448/sepolicy.patch.txt             patch -p1 < sepolicy.patch.txt
              cd $GITHUB_WORKSPACE/workdir
           fi
 
@@ -157,8 +156,7 @@ jobs:
              cd $GITHUB_WORKSPACE/workdir/source             
              curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/nongki/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
              cd $GITHUB_WORKSPACE/workdir/source/KernelSU
-             wget https://github.com/user-attachments/files/22021901/sepolicy.patch.txt
-             patch -p1 < sepolicy.patch.txt
+             wget https://github.com/user-attachments/files/22022448/sepolicy.patch.txt             patch -p1 < sepolicy.patch.txt
              cd $GITHUB_WORKSPACE/workdir
 
           fi
