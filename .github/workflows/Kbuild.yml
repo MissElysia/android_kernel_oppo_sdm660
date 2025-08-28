@@ -145,6 +145,9 @@ jobs:
           if [ "${{ github.event.inputs.ksubranch }}" == "rissu" ]; then
              cd $GITHUB_WORKSPACE/workdir/source             
              curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
+             cd $GITHUB_WORKSPACE/workdir/*U
+             wget https://github.com/user-attachments/files/22021901/sepolicy.patch.txt
+             patch -p1 < sepolicy.patch.txt
              cd $GITHUB_WORKSPACE/workdir
           fi
 
@@ -153,13 +156,11 @@ jobs:
           if [ "${{ github.event.inputs.ksubranch }}" == "sukisu" ]; then
              cd $GITHUB_WORKSPACE/workdir/source             
              curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/nongki/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
-             if [ "${{ github.event.inputs.ksubranch }}" == "susfs-main" ]; then
-                echo -e "\n# CONFIG_KSU_SUSFS_SUS_PATH is not set"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
-             fi
-                          if [ "${{ github.event.inputs.ksubranch }}" == "susfs-test" ]; then
-                echo -e "\n# CONFIG_KSU_SUSFS_SUS_PATH is not set"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
-             fi
+             cd $GITHUB_WORKSPACE/workdir/*U
+             wget https://github.com/user-attachments/files/22021901/sepolicy.patch.txt
+             patch -p1 < sepolicy.patch.txt
              cd $GITHUB_WORKSPACE/workdir
+
           fi
 
       - name: 應用 hook 方式
