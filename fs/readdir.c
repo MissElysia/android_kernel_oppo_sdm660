@@ -603,7 +603,7 @@ COMPAT_SYSCALL_DEFINE3(old_readdir, unsigned int, fd,
 		struct compat_old_linux_dirent __user *, dirent, unsigned int, count)
 {
 	int error;
-	struct fd f = fdget_pos(fd);
+	struct fd f = fdget(fd);
 	struct compat_readdir_callback buf = {
 		.ctx.actor = compat_fillonedir,
 		.dirent = dirent
@@ -639,7 +639,7 @@ orig_flow:
 	if (buf.result)
 		error = buf.result;
 
-	fdput_pos(f);
+	fdput(f);
 	return error;
 }
 
@@ -753,7 +753,7 @@ COMPAT_SYSCALL_DEFINE3(getdents, unsigned int, fd,
 	if (!access_ok(VERIFY_WRITE, dirent, count))
 		return -EFAULT;
 
-	f = fdget_pos(fd);
+	f = fdget(fd);
 	if (!f.file)
 		return -EBADF;
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
@@ -787,7 +787,7 @@ orig_flow:
 		else
 			error = count - buf.count;
 	}
-	fdput_pos(f);
+	fdput(f);
 	return error;
 }
 #endif
