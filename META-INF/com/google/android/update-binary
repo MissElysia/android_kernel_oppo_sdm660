@@ -95,8 +95,10 @@ sleep 5
 
 ui_print " "
 ui_print "AnyKernel3 by osm0sis @ xda-developers"
-ui_print "内核作者:爱莉希雅,WenHao2130,Cy,Linus,Linux,Google,Qualcomm"
+ui_print "内核作者:爱莉希雅,WenHao2130,Cy,科家,Linus,Linux,Google,Qualcomm"
 ui_print "Root方式:Sukisu Ultra"
+ui_print "Hook方式:Manual(VFS)"
+ui_print "Susfs:√"
 ui_print "模块挂载:Magic Mount"
 ui_print "KPM状态:√"
 
@@ -178,7 +180,8 @@ else
 fi
 
 ui_print "屏幕供应商:Samsung"
-ui_print "请在非国产系统上使用!!!"
+ui_print "请在安卓11级以上系统使用!!!"
+ui_print "s系列请在非国产系统上使用!!!"
 ui_print "禁止倒卖,欢迎举报!"
 ui_print "嗨~想我了吗?无论何时何地爱莉希雅都会回应你的期待♪"
 
