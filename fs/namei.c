@@ -1811,12 +1811,6 @@ static int walk_component(struct nameidata *nd, int flags)
 	}
 	err = lookup_fast(nd, &path, &inode, &seq);
 	if (unlikely(err)) {
-#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
-		if (unlikely(strstr(current->comm, "throne_tracker"))) {
-			err = -ENOENT;
-			goto out_err;
-		}
-#endif
 		if (err < 0)
 			return err;
 
