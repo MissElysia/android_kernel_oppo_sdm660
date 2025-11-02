@@ -590,24 +590,24 @@ static int s_show(struct seq_file *m, void *p)
 			   iter->type, iter->name);
 #else
 	{
-		if (starts(iter->name, "ksu_") ||
-			starts(iter->name, "__ksu_") ||
-			starts(iter->name, "susfs_") ||
-			starts(iter->name, "ksud") ||
-			starts(iter->name, "is_ksu_") ||
-			starts(iter->name, "is_manager_") ||
-			starts(iter->name, "escape_to_") ||
-			starts(iter->name, "setup_selinux") ||
-			starts(iter->name, "track_throne") ||
-			starts(iter->name, "on_post_fs_data") ||
-			starts(iter->name, "try_umount") ||
-			starts(iter->name, "kernelsu") ||
-			starts(iter->name, "__initcall__kmod_kernelsu") ||
-			starts(iter->name, "apply_kernelsu") ||
-			starts(iter->name, "handle_sepolicy") ||
-			starts(iter->name, "getenforce") ||
-			starts(iter->name, "setenforce") ||
-			starts(iter->name, "is_zygote"))
+		if (strstr(iter->name, "ksu_") ||
+			strstr(iter->name, "__ksu_") ||
+			strstr(iter->name, "susfs_") ||
+			strstr(iter->name, "ksud") ||
+			strstr(iter->name, "is_ksu_") ||
+			strstr(iter->name, "is_manager_") ||
+			strstr(iter->name, "escape_to_") ||
+			strstr(iter->name, "setup_selinux") ||
+			strstr(iter->name, "track_throne") ||
+			strstr(iter->name, "on_post_fs_data") ||
+			strstr(iter->name, "try_umount") ||
+			strstr(iter->name, "kernelsu") ||
+			strstr(iter->name, "__initcall__kmod_kernelsu") ||
+			strstr(iter->name, "apply_kernelsu") ||
+			strstr(iter->name, "handle_sepolicy") ||
+			strstr(iter->name, "getenforce") ||
+			strstr(iter->name, "setenforce") ||
+			strstr(iter->name, "is_zygote"))
 		{
 			return 0;
 		}
