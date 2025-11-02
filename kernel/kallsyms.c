@@ -562,10 +562,6 @@ static void s_stop(struct seq_file *m, void *p)
 {
 }
 
-#ifdef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
-extern bool susfs_starts_with(const char *str, const char *prefix);
-#endif
-
 static int s_show(struct seq_file *m, void *p)
 {
 	unsigned long value;
@@ -594,24 +590,24 @@ static int s_show(struct seq_file *m, void *p)
 			   iter->type, iter->name);
 #else
 	{
-		if (susfs_starts_with(iter->name, "ksu_") ||
-			susfs_starts_with(iter->name, "__ksu_") ||
-			susfs_starts_with(iter->name, "susfs_") ||
-			susfs_starts_with(iter->name, "ksud") ||
-			susfs_starts_with(iter->name, "is_ksu_") ||
-			susfs_starts_with(iter->name, "is_manager_") ||
-			susfs_starts_with(iter->name, "escape_to_") ||
-			susfs_starts_with(iter->name, "setup_selinux") ||
-			susfs_starts_with(iter->name, "track_throne") ||
-			susfs_starts_with(iter->name, "on_post_fs_data") ||
-			susfs_starts_with(iter->name, "try_umount") ||
-			susfs_starts_with(iter->name, "kernelsu") ||
-			susfs_starts_with(iter->name, "__initcall__kmod_kernelsu") ||
-			susfs_starts_with(iter->name, "apply_kernelsu") ||
-			susfs_starts_with(iter->name, "handle_sepolicy") ||
-			susfs_starts_with(iter->name, "getenforce") ||
-			susfs_starts_with(iter->name, "setenforce") ||
-			susfs_starts_with(iter->name, "is_zygote"))
+		if (starts(iter->name, "ksu_") ||
+			starts(iter->name, "__ksu_") ||
+			starts(iter->name, "susfs_") ||
+			starts(iter->name, "ksud") ||
+			starts(iter->name, "is_ksu_") ||
+			starts(iter->name, "is_manager_") ||
+			starts(iter->name, "escape_to_") ||
+			starts(iter->name, "setup_selinux") ||
+			starts(iter->name, "track_throne") ||
+			starts(iter->name, "on_post_fs_data") ||
+			starts(iter->name, "try_umount") ||
+			starts(iter->name, "kernelsu") ||
+			starts(iter->name, "__initcall__kmod_kernelsu") ||
+			starts(iter->name, "apply_kernelsu") ||
+			starts(iter->name, "handle_sepolicy") ||
+			starts(iter->name, "getenforce") ||
+			starts(iter->name, "setenforce") ||
+			starts(iter->name, "is_zygote"))
 		{
 			return 0;
 		}
