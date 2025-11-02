@@ -53,6 +53,7 @@ on:
         - 'susfs-main'
         - 'susfs-test'
         - 'main'
+        - 'dd1eb98963ee5f81cb8663cfb1a0d7ea78450433'
       hook:
         type: choice
         description: '請選擇 KernelSU 的 hook 方式'                
