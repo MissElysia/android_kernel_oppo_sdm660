@@ -62,6 +62,14 @@ on:
         options:
         - 'manual'
         - 'tracepoint'        
+      susfs:
+        type: choice
+        description: '是否开启 SuspiciousFS'                
+        required: true
+        default: 'false'        
+        options:
+        - 'true'
+        - 'false'
       device:
         type: choice
         description: '請選擇裝置名稱'        
@@ -171,6 +179,15 @@ jobs:
           fi
           if [ "${{ github.event.inputs.hook }}" == "tracepoint" ]; then
              echo -e "\CONFIG_KSU_TRACEPOINT_HOOK=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
+          fi
+
+      - name: 添加 SusFS 功能
+        run: |
+          if [ "${{ github.event.inputs.susfs }}" == "true" ]; then
+             echo -e "\nCONFIG_KSU_SUSFS=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
+          fi
+          if [ "${{ github.event.inputs.susfs }}" == "false" ]; then
+             echo -e "\n#CONFIG_KSU_SUSFS is not set"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
           fi
 
       - name: 編譯 ${{ github.event.inputs.device }} 核心
