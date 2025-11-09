@@ -55,10 +55,6 @@ void generic_fillattr(struct inode *inode, struct kstat *stat)
 
 EXPORT_SYMBOL(generic_fillattr);
 
-#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
-#include <../drivers/kernelsu/ksu_trace.h>
-#endif
-
 /**
  * vfs_getattr_nosec - getattr without security checks
  * @path: file to get attributes from
@@ -108,18 +104,12 @@ int vfs_fstat(unsigned int fd, struct kstat *stat)
 	return error;
 }
 EXPORT_SYMBOL(vfs_fstat);
-#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
-extern int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags);
-#endif
 int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
 		int flag)
 {
 	struct path path;
 	int error = -EINVAL;
 	unsigned int lookup_flags = 0;
-#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
-	ksu_handle_stat(&dfd, &filename, &flag);
-#endif
 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
 		      AT_EMPTY_PATH)) != 0)
 		goto out;
@@ -326,10 +316,6 @@ SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
 	struct kstat stat;
 	int error;
 
-#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
-	trace_ksu_trace_stat_hook(&dfd, &filename, &flag); /* 32-bit su support */
-#endif
-
 #if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
 	ksu_handle_stat(&dfd, &filename, &flag);
 #endif
@@ -474,10 +460,6 @@ SYSCALL_DEFINE4(fstatat64, int, dfd, const char __user *, filename,
 {
 	struct kstat stat;
 	int error;
-
-#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
-	trace_ksu_trace_stat_hook(&dfd, &filename, &flag);
-#endif
 
 #if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
 	ksu_handle_stat(&dfd, &filename, &flag);

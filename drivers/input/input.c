@@ -30,10 +30,6 @@
 #include "input-compat.h"
 #include <linux/reboot.h>
 
-#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
-#include <../../drivers/kernelsu/ksu_trace.h>
-#endif
-
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
 MODULE_DESCRIPTION("Input core");
 MODULE_LICENSE("GPL");
@@ -373,10 +369,6 @@ static int input_get_disposition(struct input_dev *dev,
 	return disposition;
 }
 
-#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
-extern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);
-#endif
-
 #ifdef CONFIG_ELYSIA_DEBUG
 static bool debug_input_hook __read_mostly = true;
 static unsigned int powerkey_pressed_count = 0;
@@ -432,10 +424,6 @@ if (unlikely(debug_input_hook))
 		debug_handle_input_handle_event(&type, &code, &value);
 
 	disposition = input_get_disposition(dev, type, code, &value);
-
-#if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
-	ksu_handle_input_handle_event(&type, &code, &value);
-#endif
 
 	if ((disposition & INPUT_PASS_TO_DEVICE) && dev->event)
 		dev->event(dev, type, code, value);
@@ -501,10 +489,6 @@ void input_event(struct input_dev *dev,
 #if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
 	if (unlikely(ksu_input_hook))
 		ksu_handle_input_handle_event(&type, &code, &value);
-#endif
-
-#if defined(CONFIG_KSU) && defined(CONFIG_KSU_TRACEPOINT_HOOK)
-    trace_ksu_trace_input_hook(&type, &code, &value);
 #endif
 
 	if (is_event_supported(type, dev->evbit, EV_MAX)) {
