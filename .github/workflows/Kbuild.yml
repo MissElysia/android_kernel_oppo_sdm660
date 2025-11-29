@@ -50,6 +50,8 @@ on:
         default: 'nongki'        
         options:
         - 'nongki'
+        - 'susfs-main'
+        - 'susfs-test'
         - 'main'
         - 'dd1eb98963ee5f81cb8663cfb1a0d7ea78450433'
       hook:
@@ -59,6 +61,15 @@ on:
         default: 'manual'        
         options:
         - 'manual'
+        - 'tracepoint'        
+      susfs:
+        type: choice
+        description: '是否开启 SuspiciousFS'                
+        required: true
+        default: 'false'        
+        options:
+        - 'true'
+        - 'false'
       device:
         type: choice
         description: '請選擇裝置名稱'        
@@ -160,6 +171,18 @@ jobs:
           if [ "${{ github.event.inputs.hook }}" == "manual" ]; then
              echo -e "\nCONFIG_KSU_MANUAL_HOOK=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
           fi
+          if [ "${{ github.event.inputs.hook }}" == "tracepoint" ]; then
+             echo -e "\CONFIG_KSU_TRACEPOINT_HOOK=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
+          fi
+
+      - name: 添加 SusFS 功能
+        run: |
+          if [ "${{ github.event.inputs.susfs }}" == "true" ]; then
+             echo -e "\nCONFIG_KSU_SUSFS=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
+          fi
+          if [ "${{ github.event.inputs.susfs }}" == "false" ]; then
+             echo -e "\n#CONFIG_KSU_SUSFS is not set"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
+          fi
 
       - name: 編譯 ${{ github.event.inputs.device }} 核心
         run: |
@@ -190,11 +213,32 @@ jobs:
               exit 1
           fi
 
+      - name: 修補 KPM
+        if: env.CHECK_FILE_IS_OK == 'true'
+        run: |
+          if [ "${{ github.event.inputs.kpm }}" == "true" ]; then
+             mkdir $GITHUB_WORKSPACE/workdir/SukiSU-Patch
+             cd $GITHUB_WORKSPACE/workdir/SukiSU-Patch
+             curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kpm/patch_linux" -o patch_linux
+             cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/Image .
+             cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/dts/1*/*.dtb .
+             chmod +x patch_linux
+             ./patch_linux
+             mv -f oImage Image
+             gzip -k Image Image.gz
+             cat Image.gz *.dtb > Image.gz-dtb
+          fi
+
       - name: 制作 ${{ github.event.inputs.device }} 嘅 Anykernel3 文檔
         if: env.CHECK_FILE_IS_OK == 'true'
         run: |
           git clone https://github.com/$GITHUB_REPOSITORY/ -b prebuilt_ak3 --depth 1 $GITHUB_WORKSPACE/workdir/ak3
           rm -r $GITHUB_WORKSPACE/workdir/ak3/.git
+          if [ "${{ github.event.inputs.kpm }}" == "true" ]; then 
+             cp $GITHUB_WORKSPACE/workdir/SukiSU-Patch/Image.gz-dtb $GITHUB_WORKSPACE/workdir/ak3
+          else
+             cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/Image.gz-dtb $GITHUB_WORKSPACE/workdir/ak3
+          fi
 
       - name: 上傳 ${{ github.event.inputs.device }} 嘅 AnyKernel3 文檔
         if: env.CHECK_FILE_IS_OK == 'true'
