@@ -145,8 +145,8 @@ static void mnt_free_id(struct mount *mnt)
 	if (likely(mnt->mnt.susfs_mnt_id_backup)) {
 		spin_lock(&mnt_id_lock);
 		ida_remove(&mnt_id_ida, mnt->mnt.susfs_mnt_id_backup);
-		if (DEFAULT_KSU_MNT_ID > mnt->mnt.susfs_mnt_id_backup)
-			DEFAULT_KSU_MNT_ID = mnt->mnt.susfs_mnt_id_backup;
+		if (mnt_id_start > mnt->mnt.susfs_mnt_id_backup)
+			mnt_id_start = mnt->mnt.susfs_mnt_id_backup;
 		spin_unlock(&mnt_id_lock);
 		return;
 	}
