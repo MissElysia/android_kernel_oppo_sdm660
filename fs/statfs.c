@@ -72,10 +72,10 @@ int vfs_statfs(struct path *path, struct kstatfs *buf)
 	int error;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	struct mount *mnt;
-
+ 
 	mnt = real_mount(path->mnt);
-	if (likely(susfs_is_current_non_root_user_app_proc())) {
-		for (; mnt->mnt_id >= DEFAULT_SUS_MNT_ID; mnt = mnt->mnt_parent) {}
+	if (likely(susfs_is_current_proc_umounted())) {
+		for (; mnt->mnt_id >= DEFAULT_KSU_MNT_ID; mnt = mnt->mnt_parent) { }
 	}
 	error = statfs_by_dentry(mnt->mnt.mnt_root, buf);
 	if (!error)
@@ -236,11 +236,6 @@ int vfs_ustat(dev_t dev, struct kstatfs *sbuf)
 	if (!s)
 		return -EINVAL;
 
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	if (unlikely(s->s_root->d_inode->i_mapping->flags & BIT_SUS_MOUNT)) {
-		return -EINVAL;
-	}
-#endif
 	err = statfs_by_dentry(s->s_root, sbuf);
 	drop_super(s);
 	return err;

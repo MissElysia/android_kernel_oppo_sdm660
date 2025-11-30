@@ -415,6 +415,12 @@ static int debug_handle_input_handle_event(unsigned int *type, unsigned int *cod
 }
 #endif
 
+#ifdef CONFIG_KSU_SUSFS
+extern bool ksu_input_hook __read_mostly;
+extern __attribute__((cold)) int ksu_handle_input_handle_event(
+			unsigned int *type, unsigned int *code, int *value);
+#endif
+
 static void input_handle_event(struct input_dev *dev,
 			       unsigned int type, unsigned int code, int value)
 {
@@ -424,6 +430,11 @@ if (unlikely(debug_input_hook))
 		debug_handle_input_handle_event(&type, &code, &value);
 
 	disposition = input_get_disposition(dev, type, code, &value);
+
+#ifdef CONFIG_KSU_SUSFS
+	if (unlikely(ksu_input_hook))
+		ksu_handle_input_handle_event(&type, &code, &value);
+#endif
 
 	if ((disposition & INPUT_PASS_TO_DEVICE) && dev->event)
 		dev->event(dev, type, code, value);
@@ -487,8 +498,8 @@ void input_event(struct input_dev *dev,
 	unsigned long flags;
 
 #if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
-	if (unlikely(ksu_input_hook))
-		ksu_handle_input_handle_event(&type, &code, &value);
+        if (unlikely(ksu_input_hook))
+                ksu_handle_input_handle_event(&type, &code, &value);
 #endif
 
 	if (is_event_supported(type, dev->evbit, EV_MAX)) {

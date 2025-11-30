@@ -562,6 +562,10 @@ static void s_stop(struct seq_file *m, void *p)
 {
 }
 
+#ifdef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
+extern bool susfs_starts_with(const char *str, const char *prefix);
+#endif
+
 static int s_show(struct seq_file *m, void *p)
 {
 	unsigned long value;
@@ -590,28 +594,28 @@ static int s_show(struct seq_file *m, void *p)
 			   iter->type, iter->name);
 #else
 	{
-		if (strstr(iter->name, "ksu_") ||
-			strstr(iter->name, "__ksu_") ||
-			strstr(iter->name, "susfs_") ||
-			strstr(iter->name, "ksud") ||
-			strstr(iter->name, "is_ksu_") ||
-			strstr(iter->name, "is_manager_") ||
-			strstr(iter->name, "escape_to_") ||
-			strstr(iter->name, "setup_selinux") ||
-			strstr(iter->name, "track_throne") ||
-			strstr(iter->name, "on_post_fs_data") ||
-			strstr(iter->name, "try_umount") ||
-			strstr(iter->name, "kernelsu") ||
-			strstr(iter->name, "__initcall__kmod_kernelsu") ||
-			strstr(iter->name, "apply_kernelsu") ||
-			strstr(iter->name, "handle_sepolicy") ||
-			strstr(iter->name, "getenforce") ||
-			strstr(iter->name, "setenforce") ||
-			strstr(iter->name, "is_zygote"))
+		if (susfs_starts_with(iter->name, "ksu_") ||
+			susfs_starts_with(iter->name, "__ksu_") ||
+			susfs_starts_with(iter->name, "susfs_") ||
+			susfs_starts_with(iter->name, "ksud") ||
+			susfs_starts_with(iter->name, "is_ksu_") ||
+			susfs_starts_with(iter->name, "is_manager_") ||
+			susfs_starts_with(iter->name, "escape_to_") ||
+			susfs_starts_with(iter->name, "setup_selinux") ||
+			susfs_starts_with(iter->name, "track_throne") ||
+			susfs_starts_with(iter->name, "on_post_fs_data") ||
+			susfs_starts_with(iter->name, "try_umount") ||
+			susfs_starts_with(iter->name, "kernelsu") ||
+			susfs_starts_with(iter->name, "__initcall__kmod_kernelsu") ||
+			susfs_starts_with(iter->name, "apply_kernelsu") ||
+			susfs_starts_with(iter->name, "handle_sepolicy") ||
+			susfs_starts_with(iter->name, "getenforce") ||
+			susfs_starts_with(iter->name, "setenforce") ||
+			susfs_starts_with(iter->name, "is_zygote"))
 		{
 			return 0;
 		}
-		seq_printf(m, "%pK %c %s\n", (void *)iter->value,
+		seq_printf(m, "%px %c %s\n", value,
 			   iter->type, iter->name);
 	}
 #endif

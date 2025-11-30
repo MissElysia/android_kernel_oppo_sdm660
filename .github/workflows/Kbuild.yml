@@ -53,23 +53,6 @@ on:
         - 'susfs-main'
         - 'susfs-test'
         - 'main'
-        - 'dd1eb98963ee5f81cb8663cfb1a0d7ea78450433'
-      hook:
-        type: choice
-        description: '請選擇 KernelSU 的 hook 方式'                
-        required: true
-        default: 'manual'        
-        options:
-        - 'manual'
-        - 'tracepoint'        
-      susfs:
-        type: choice
-        description: '是否开启 SuspiciousFS'                
-        required: true
-        default: 'false'        
-        options:
-        - 'true'
-        - 'false'
       device:
         type: choice
         description: '請選擇裝置名稱'        
@@ -163,25 +146,6 @@ jobs:
              cd $GITHUB_WORKSPACE/workdir/source             
              curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/nongki/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
              cd $GITHUB_WORKSPACE/workdir
-
-          fi
-
-      - name: 應用 hook 方式
-        run: |
-          if [ "${{ github.event.inputs.hook }}" == "manual" ]; then
-             echo -e "\nCONFIG_KSU_MANUAL_HOOK=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
-          fi
-          if [ "${{ github.event.inputs.hook }}" == "tracepoint" ]; then
-             echo -e "\CONFIG_KSU_TRACEPOINT_HOOK=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
-          fi
-
-      - name: 添加 SusFS 功能
-        run: |
-          if [ "${{ github.event.inputs.susfs }}" == "true" ]; then
-             echo -e "\nCONFIG_KSU_SUSFS=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
-          fi
-          if [ "${{ github.event.inputs.susfs }}" == "false" ]; then
-             echo -e "\n#CONFIG_KSU_SUSFS is not set"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
           fi
 
       - name: 編譯 ${{ github.event.inputs.device }} 核心
