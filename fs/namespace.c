@@ -37,6 +37,8 @@ extern bool susfs_is_boot_completed_triggered;
 static DEFINE_IDA(susfs_ksu_mnt_group_ida);
 static atomic64_t susfs_ksu_mounts = ATOMIC64_INIT(0);
 
+static int susfs_mnt_group_start = DEFAULT_KSU_MNT_GROUP_ID;
+
 #define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
@@ -134,18 +136,17 @@ static void mnt_free_id(struct mount *mnt)
 {
 	int id = mnt->mnt_id;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	int mnt_id_backup = mnt->mnt.susfs_mnt_id_backup;
 	// First we have to check if susfs_mnt_id_backup == DEFAULT_KSU_MNT_ID,
 	// if so, no need to free.
-	if (unlikely(mnt_id_backup == DEFAULT_KSU_MNT_ID)) {
+	if (unlikely(mnt->mnt.susfs_mnt_id_backup == DEFAULT_KSU_MNT_ID)) {
 		return;
 	}
 	// Second if susfs_mnt_id_backup was set after mnt_id reorder, free it if so.
-	if (likely(mnt_id_backup)) {
+	if (likely(mnt->mnt.susfs_mnt_id_backup)) {
 		spin_lock(&mnt_id_lock);
-		ida_remove(&mnt_id_ida, mnt_id_backup);
-		if (DEFAULT_KSU_MNT_ID > mnt_id_backup)
-			DEFAULT_KSU_MNT_ID = mnt_id_backup;
+		ida_remove(&mnt_id_ida, id);
+		if (DEFAULT_KSU_MNT_ID > id)
+			DEFAULT_KSU_MNT_ID = id;
 		spin_unlock(&mnt_id_lock);
 		return;
 	}
@@ -173,13 +174,13 @@ static int mnt_alloc_group_id(struct mount *mnt)
 	 *   when boot-completed stage is triggered in core_hook.c 
 	 */
 	if (!susfs_is_boot_completed_triggered && mnt->mnt_id >= DEFAULT_KSU_MNT_ID) {
-		if (!ida_pre_get(&susfs_mnt_group_ida, GFP_KERNEL))
+		if (!ida_pre_get(&susfs_ksu_mnt_group_ida, GFP_KERNEL))
 			return -ENOMEM;
-		res = ida_get_new_above(&susfs_mnt_group_ida,
+		res = ida_get_new_above(&susfs_ksu_mnt_group_ida,
 					DEFAULT_KSU_MNT_GROUP_ID,
 					&mnt->mnt_group_id);
 		if (!res)
-			DEFAULT_KSU_MNT_GROUP_ID = mnt->mnt_group_id + 1;
+			susfs_mnt_group_start = mnt->mnt_group_id + 1;
 	    goto bypass_orig_flow;
 	}
 #endif
@@ -214,7 +215,7 @@ void mnt_release_group_id(struct mount *mnt)
 	 *   so it is fine.
 	 */
 	if (!susfs_is_boot_completed_triggered && mnt->mnt_group_id >= DEFAULT_KSU_MNT_GROUP_ID) {
-		ida_remove(&susfs_mnt_group_ida, mnt->mnt_group_id);
+		ida_remove(&susfs_ksu_mnt_group_ida, mnt->mnt_group_id);
 		if (susfs_mnt_group_start > mnt->mnt_group_id)
 			susfs_mnt_group_start = mnt->mnt_group_id;
 		mnt->mnt_group_id = 0;
@@ -278,7 +279,7 @@ static struct mount *susfs_reuse_sus_vfsmnt(const char *name, int orig_mnt_id)
 
 		if (name) {
 			mnt->mnt_devname = kstrdup_const(name,
-							 GFP_KERNEL_ACCOUNT);
+							 GFP_KERNEL);
 			if (!mnt->mnt_devname)
 				goto out_free_cache;
 		}
@@ -306,7 +307,6 @@ static struct mount *susfs_reuse_sus_vfsmnt(const char *name, int orig_mnt_id)
 		INIT_LIST_HEAD(&mnt->mnt_slave);
 		INIT_HLIST_NODE(&mnt->mnt_mp_list);
 		INIT_LIST_HEAD(&mnt->mnt_umounting);
-		INIT_HLIST_HEAD(&mnt->mnt_stuck_children);
 	}
 	return mnt;
 
@@ -330,7 +330,7 @@ static struct mount *susfs_alloc_sus_vfsmnt(const char *name)
 
 		if (name) {
 			mnt->mnt_devname = kstrdup_const(name,
-							 GFP_KERNEL_ACCOUNT);
+							 GFP_KERNEL);
 			if (!mnt->mnt_devname)
 				goto out_free_cache;
 		}
@@ -358,7 +358,6 @@ static struct mount *susfs_alloc_sus_vfsmnt(const char *name)
 		INIT_LIST_HEAD(&mnt->mnt_slave);
 		INIT_HLIST_NODE(&mnt->mnt_mp_list);
 		INIT_LIST_HEAD(&mnt->mnt_umounting);
-		INIT_HLIST_HEAD(&mnt->mnt_stuck_children);
 	}
 	return mnt;
 
