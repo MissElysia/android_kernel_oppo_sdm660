@@ -37,8 +37,6 @@ extern bool susfs_is_boot_completed_triggered;
 static DEFINE_IDA(susfs_ksu_mnt_group_ida);
 static atomic64_t susfs_ksu_mounts = ATOMIC64_INIT(0);
 
-static int susfs_mnt_group_start = DEFAULT_KSU_MNT_GROUP_ID;
-
 #define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
@@ -141,6 +139,15 @@ static void mnt_free_id(struct mount *mnt)
 	if (unlikely(mnt->mnt.susfs_mnt_id_backup == DEFAULT_KSU_MNT_ID)) {
 		return;
 	}
+	// Now we can check if its mnt_id is sus
+	if (unlikely(mnt->mnt_id >= DEFAULT_KSU_MNT_ID)) {
+		spin_lock(&mnt_id_lock);
+		ida_remove(&mnt_id_ida, id);
+		if (mnt_id_start > id)
+			mnt_id_start = id;
+		spin_unlock(&mnt_id_lock);
+		return;
+	}
 	// Second if susfs_mnt_id_backup was set after mnt_id reorder, free it if so.
 	if (likely(mnt->mnt.susfs_mnt_id_backup)) {
 		spin_lock(&mnt_id_lock);
@@ -151,6 +158,7 @@ static void mnt_free_id(struct mount *mnt)
 		return;
 	}
 #endif
+
 	spin_lock(&mnt_id_lock);
 	ida_remove(&mnt_id_ida, id);
 	if (mnt_id_start > id)
@@ -181,7 +189,7 @@ static int mnt_alloc_group_id(struct mount *mnt)
 					&mnt->mnt_group_id);
 		if (!res)
 			susfs_mnt_group_start = mnt->mnt_group_id + 1;
-	    goto bypass_orig_flow;
+	    return res;
 	}
 #endif
 	if (!ida_pre_get(&mnt_group_ida, GFP_KERNEL))
@@ -192,9 +200,6 @@ static int mnt_alloc_group_id(struct mount *mnt)
 				&mnt->mnt_group_id);
 	if (!res)
 		mnt_group_start = mnt->mnt_group_id + 1;
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-bypass_orig_flow:
-#endif
 	return res;
 }
 
@@ -1157,7 +1162,20 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 	if (!type)
 		return ERR_PTR(-ENODEV);
 
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	// We keep checking for ksu process only until boot-completed stage is triggered
+	if (!susfs_is_boot_completed_triggered && susfs_is_current_ksu_domain()) {
+		mnt = susfs_alloc_sus_vfsmnt(fc->source ?: "none");
+		atomic64_add(1, &susfs_ksu_mounts);
+		goto bypass_orig_flow;
+	}
+#endif
+
 	mnt = alloc_vfsmnt(name);
+
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+bypass_orig_flow:
+#endif
 	if (!mnt)
 		return ERR_PTR(-ENOMEM);
 
