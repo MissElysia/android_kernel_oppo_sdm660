@@ -188,7 +188,7 @@ static int mnt_alloc_group_id(struct mount *mnt)
 					DEFAULT_KSU_MNT_GROUP_ID,
 					&mnt->mnt_group_id);
 		if (!res)
-			susfs_mnt_group_start = mnt->mnt_group_id + 1;
+			mnt_group_start = mnt->mnt_group_id + 1;
 	    return res;
 	}
 #endif
@@ -221,8 +221,8 @@ void mnt_release_group_id(struct mount *mnt)
 	 */
 	if (!susfs_is_boot_completed_triggered && mnt->mnt_group_id >= DEFAULT_KSU_MNT_GROUP_ID) {
 		ida_remove(&susfs_ksu_mnt_group_ida, mnt->mnt_group_id);
-		if (susfs_mnt_group_start > mnt->mnt_group_id)
-			susfs_mnt_group_start = mnt->mnt_group_id;
+		if (mnt_group_start > mnt->mnt_group_id)
+			mnt_group_start = mnt->mnt_group_id;
 		mnt->mnt_group_id = 0;
 		return;
 	}
@@ -1165,7 +1165,7 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	// We keep checking for ksu process only until boot-completed stage is triggered
 	if (!susfs_is_boot_completed_triggered && susfs_is_current_ksu_domain()) {
-		mnt = susfs_alloc_sus_vfsmnt(fc->source ?: "none");
+		mnt = susfs_alloc_sus_vfsmnt(name ?: "none");
 		atomic64_add(1, &susfs_ksu_mounts);
 		goto bypass_orig_flow;
 	}
