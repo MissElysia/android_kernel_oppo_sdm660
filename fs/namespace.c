@@ -139,15 +139,6 @@ static void mnt_free_id(struct mount *mnt)
 	if (unlikely(mnt->mnt.susfs_mnt_id_backup == DEFAULT_KSU_MNT_ID)) {
 		return;
 	}
-	// Now we can check if its mnt_id is sus
-	if (unlikely(mnt->mnt_id >= DEFAULT_KSU_MNT_ID)) {
-		spin_lock(&mnt_id_lock);
-		ida_remove(&mnt_id_ida, id);
-		if (mnt_id_start > id)
-			mnt_id_start = id;
-		spin_unlock(&mnt_id_lock);
-		return;
-	}
 	// Second if susfs_mnt_id_backup was set after mnt_id reorder, free it if so.
 	if (likely(mnt->mnt.susfs_mnt_id_backup)) {
 		spin_lock(&mnt_id_lock);
