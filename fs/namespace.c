@@ -136,7 +136,7 @@ static void mnt_free_id(struct mount *mnt)
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	// First we have to check if susfs_mnt_id_backup == DEFAULT_KSU_MNT_ID,
 	// if so, no need to free.
-	if (unlikely(mnt->mnt.susfs_mnt_id_backup == DEFAULT_KSU_MNT_ID)) {
+	if (mnt->mnt.susfs_mnt_id_backup == DEFAULT_KSU_MNT_ID) {
 		return;
 	}
 	// Second if susfs_mnt_id_backup was set after mnt_id reorder, free it if so.
