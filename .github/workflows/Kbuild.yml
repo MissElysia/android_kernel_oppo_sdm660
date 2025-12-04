@@ -144,7 +144,7 @@ jobs:
         run: |
           if [ "${{ github.event.inputs.ksubranch }}" == "sukisu" ]; then
              cd $GITHUB_WORKSPACE/workdir/source             
-             curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/nongki/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
+             curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
              cd $GITHUB_WORKSPACE/workdir
           fi
 
