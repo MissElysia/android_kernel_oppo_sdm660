@@ -36,6 +36,7 @@ extern bool susfs_is_boot_completed_triggered __read_mostly;
 
 static DEFINE_IDA(susfs_ksu_mnt_group_ida);
 static atomic64_t susfs_ksu_mounts = ATOMIC64_INIT(0);
+static int susfs_mnt_group_start = DEFAULT_SUS_MNT_GROUP_ID;
 
 #define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
@@ -176,8 +177,10 @@ static int mnt_alloc_group_id(struct mount *mnt)
 		if (!ida_pre_get(&susfs_ksu_mnt_group_ida, GFP_KERNEL))
 			return -ENOMEM;
 		res = ida_get_new_above(&susfs_ksu_mnt_group_ida,
-					DEFAULT_KSU_MNT_GROUP_ID,
+					susfs_mnt_group_start,
 					&mnt->mnt_group_id);
+		if (!res)
+			susfs_mnt_group_start = mnt->mnt_group_id + 1;
 	    return res;
 	}
 #endif
@@ -210,6 +213,8 @@ void mnt_release_group_id(struct mount *mnt)
 	 */
 	if (!susfs_is_boot_completed_triggered && mnt->mnt_group_id >= DEFAULT_KSU_MNT_GROUP_ID) {
 		ida_remove(&susfs_ksu_mnt_group_ida, mnt->mnt_group_id);
+		if (susfs_mnt_group_start > mnt->mnt_group_id)
+			susfs_mnt_group_start = mnt->mnt_group_id;
 		mnt->mnt_group_id = 0;
 		return;
 	}
