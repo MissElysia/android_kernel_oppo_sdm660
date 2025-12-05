@@ -163,7 +163,7 @@ jobs:
 
       - name: 添加 Debug
         run: |
-          if [ "${{ github.event.inputs.ksubranch }}" == "sukisu" ]; then
+          if [ "${{ github.event.inputs.ksubranch }}" == "debug" ]; then
              cd $GITHUB_WORKSPACE/workdir/source             
              curl -LSs "https://raw.githubusercontent.com/mihoy3rd/SukiSU-Ultra/main/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
              cd $GITHUB_WORKSPACE/workdir
