@@ -144,7 +144,7 @@ static void mnt_free_id(struct mount *mnt)
 	// Now we can check if its mnt_id is sus
 	if (unlikely(mnt->mnt_id >= DEFAULT_KSU_MNT_ID)) {
 		spin_lock(&mnt_id_lock);
-		ida_remove(&susfs_mnt_id_ida, id);
+		ida_remove(&mnt_id_ida, id);
 		if (susfs_mnt_id_start > id)
 			susfs_mnt_id_start = id;
 		spin_unlock(&mnt_id_lock);
