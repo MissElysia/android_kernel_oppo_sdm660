@@ -77,9 +77,15 @@ static int seq_show(struct seq_file *m, void *v)
 		if (kern_path(dpath, 0, &path)) {
 			goto out_free_pathname;
 		}
+
+		// - We have to iterate the mnt->mnt_parent until the mnt_id is not sus,
+		//   doing real_mount(path.mnt)->mnt_id is wrong since this will retrieve
+		//   the mnt_id of the umounted path.
+		for (; mnt->mnt_id >= DEFAULT_KSU_MNT_ID; mnt = mnt->mnt_parent) { }
+
 		seq_printf(m, "pos:\t%lli\nflags:\t0%o\nmnt_id:\t%i\nino:\t%lu\n",
 				(long long)file->f_pos, f_flags,
-				real_mount(path.mnt)->mnt_id,
+				mnt->mnt_id,
 				path.dentry->d_inode->i_ino);
 		path_put(&path);
 		kfree(pathname);
