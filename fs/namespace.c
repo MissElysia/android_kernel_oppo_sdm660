@@ -136,26 +136,18 @@ static void mnt_free_id(struct mount *mnt)
 {
 	int id = mnt->mnt_id;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	int mnt_id_backup = mnt->mnt.susfs_mnt_id_backup;
 	// First we have to check if susfs_mnt_id_backup == DEFAULT_KSU_MNT_ID,
 	// if so, no need to free.
-	if (mnt->mnt.susfs_mnt_id_backup == DEFAULT_KSU_MNT_ID) {
-		return;
-	}
-	// Now we can check if its mnt_id is sus
-	if (unlikely(mnt->mnt_id >= DEFAULT_KSU_MNT_ID)) {
-		spin_lock(&mnt_id_lock);
-		ida_remove(&mnt_id_ida, id);
-		if (susfs_mnt_id_start > id)
-			susfs_mnt_id_start = id;
-		spin_unlock(&mnt_id_lock);
+	if (mnt_id_backup == DEFAULT_KSU_MNT_ID) {
 		return;
 	}
 	// Second if susfs_mnt_id_backup was set after mnt_id reorder, free it if so.
-	if (likely(mnt->mnt.susfs_mnt_id_backup)) {
+	if (likely(mnt_id_backup)) {
 		spin_lock(&mnt_id_lock);
-		ida_remove(&mnt_id_ida, mnt->mnt.susfs_mnt_id_backup);
-		if (mnt_id_start > mnt->mnt.susfs_mnt_id_backup)
-			mnt_id_start = mnt->mnt.susfs_mnt_id_backup;
+		ida_remove(&mnt_id_ida, mnt_id_backup);
+		if (mnt_id_start > mnt_id_backup)
+			mnt_id_start = mnt_id_backup;
 		spin_unlock(&mnt_id_lock);
 		return;
 	}
@@ -222,9 +214,9 @@ void mnt_release_group_id(struct mount *mnt)
 	 *   so it is fine.
 	 */
 	if (!susfs_is_boot_completed_triggered && mnt->mnt_group_id >= DEFAULT_KSU_MNT_GROUP_ID) {
-		ida_remove(&susfs_ksu_mnt_group_ida, mnt->mnt_group_id);
-		if (susfs_mnt_group_start > mnt->mnt_group_id)
-			susfs_mnt_group_start = mnt->mnt_group_id;
+		ida_remove(&susfs_ksu_mnt_group_ida, id);
+		if (susfs_mnt_group_start > id)
+			susfs_mnt_group_start = id;
 		mnt->mnt_group_id = 0;
 		return;
 	}
