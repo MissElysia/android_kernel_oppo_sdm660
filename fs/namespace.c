@@ -37,6 +37,7 @@ extern bool susfs_is_boot_completed_triggered __read_mostly;
 static DEFINE_IDA(susfs_ksu_mnt_group_ida);
 static atomic64_t susfs_ksu_mounts = ATOMIC64_INIT(0);
 static int susfs_mnt_group_start = DEFAULT_KSU_MNT_GROUP_ID;
+static int susfs_mnt_id_start = DEFAULT_SUS_MNT_ID;
 
 #define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
@@ -138,6 +139,15 @@ static void mnt_free_id(struct mount *mnt)
 	// First we have to check if susfs_mnt_id_backup == DEFAULT_KSU_MNT_ID,
 	// if so, no need to free.
 	if (mnt->mnt.susfs_mnt_id_backup == DEFAULT_KSU_MNT_ID) {
+		return;
+	}
+	// Now we can check if its mnt_id is sus
+	if (unlikely(mnt->mnt_id >= DEFAULT_KSU_MNT_ID)) {
+		spin_lock(&mnt_id_lock);
+		ida_remove(&susfs_mnt_id_ida, id);
+		if (susfs_mnt_id_start > id)
+			susfs_mnt_id_start = id;
+		spin_unlock(&mnt_id_lock);
 		return;
 	}
 	// Second if susfs_mnt_id_backup was set after mnt_id reorder, free it if so.
