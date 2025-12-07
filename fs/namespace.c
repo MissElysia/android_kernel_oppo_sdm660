@@ -34,7 +34,6 @@
 extern bool susfs_is_current_ksu_domain(void);
 extern bool susfs_is_boot_completed_triggered __read_mostly;
 
-static DEFINE_IDA(susfs_ksu_mnt_id_ida);
 static DEFINE_IDA(susfs_ksu_mnt_group_ida);
 static atomic64_t susfs_ksu_mounts = ATOMIC64_INIT(0);
 
@@ -113,26 +112,6 @@ static inline struct hlist_head *mp_hash(struct dentry *dentry)
 	return &mountpoint_hashtable[tmp & mp_hash_mask];
 }
 
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-/* Used to allocate fake mnt_id */
-static int susfs_mnt_alloc_id(struct mount *mnt)
-{
-	int res;
-
-retry:
-	ida_pre_get(&susfs_ksu_mnt_id_ida, GFP_KERNEL);
-	spin_lock(&mnt_id_lock);
-	res = ida_get_new_above(&susfs_ksu_mnt_id_ida, susfs_mnt_id_start, &mnt->mnt_id);
-	if (!res)
-		susfs_mnt_id_start = mnt->mnt_id + 1;
-	spin_unlock(&mnt_id_lock);
-	if (res == -EAGAIN)
-		goto retry;
-
-	return res;
-}
-#endif
-
 /*
  * allocation is serialized by namespace_sem, but we need the spinlock to
  * serialize with freeing.
@@ -197,7 +176,7 @@ static int mnt_alloc_group_id(struct mount *mnt)
 	 *   if it is ksu mounts, until susfs_is_boot_completed_triggered is set to true
 	 *   when boot-completed stage is triggered in core_hook.c 
 	 */
-	if (!susfs_is_boot_completed_triggered && mnt->mnt_id >= DEFAULT_KSU_MNT_ID) {
+	if (!susfs_is_boot_completed_triggered && mnt->mnt_group_id >= DEFAULT_KSU_MNT_ID) {
 		if (!ida_pre_get(&susfs_ksu_mnt_group_ida, GFP_KERNEL))
 			return -ENOMEM;
 		res = ida_get_new_above(&susfs_ksu_mnt_group_ida,
