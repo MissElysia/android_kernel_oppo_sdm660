@@ -26,7 +26,7 @@
 #include <linux/task_work.h>
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 #include <linux/susfs_def.h>
-#endif// #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 #include "pnode.h"
 #include "internal.h"
 
@@ -176,7 +176,7 @@ static int mnt_alloc_group_id(struct mount *mnt)
 	 *   if it is ksu mounts, until susfs_is_boot_completed_triggered is set to true
 	 *   when boot-completed stage is triggered in core_hook.c 
 	 */
-	if (!susfs_is_boot_completed_triggered && mnt->mnt_group_id >= DEFAULT_KSU_MNT_ID) {
+	if (!susfs_is_boot_completed_triggered && mnt->mnt_id >= DEFAULT_KSU_MNT_ID) {
 		if (!ida_pre_get(&susfs_ksu_mnt_group_ida, GFP_KERNEL))
 			return -ENOMEM;
 		res = ida_get_new_above(&susfs_ksu_mnt_group_ida,
