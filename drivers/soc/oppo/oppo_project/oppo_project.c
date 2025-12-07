@@ -32,6 +32,43 @@ unsigned int get_project(void)
         return format->nproject;
 }
 
+unsigned int get_real_project(void)
+{
+        static const struct
+        {
+                unsigned int project;
+                unsigned int oper;
+                unsigned int real;
+        } realProjectMap[] = {
+                { OPPO_16051, OPERATOR_ALL_CHINA_CARRIER        , OPPO_R11 },
+                { OPPO_16051, OPERATOR_CHINA_MOBILE             , OPPO_R11T },
+                { OPPO_16103, OPERATOR_ALL_CHINA_CARRIER        , OPPO_R11_PLUS },
+                { OPPO_16103, OPERATOR_CHINA_MOBILE             , OPPO_R11_PLUS_T },
+                { OPPO_16118, OPERATOR_ALL_CHINA_CARRIER_MOBILE , OPPO_R11_PLUS_K },
+                { OPPO_16118, OPERATOR_CHINA_MOBILE             , OPPO_R11_PLUS_KT },
+                { OPPO_17011, OPERATOR_ALL_CHINA_CARRIER        , OPPO_R11S },
+                { OPPO_17011, OPERATOR_CHINA_MOBILE             , OPPO_R11S_T },
+                { OPPO_17021, OPERATOR_ALL_CHINA_CARRIER        , OPPO_R11S_PLUS },
+                { OPPO_17021, OPERATOR_CHINA_MOBILE             , OPPO_R11S_PLUS_T },
+        };
+        unsigned int re = OPPO_REAL_UNKOWN;
+        int i;
+
+        if (format == NULL) {
+                init_project_version();
+        }
+
+        for (i = 0; i < sizeof(realProjectMap)/sizeof(realProjectMap[0]); i++) {
+                if (format->nproject == realProjectMap[i].project &&
+                    format->noperator == realProjectMap[i].oper) {
+                        re = realProjectMap[i].real;
+                        break;
+                }
+        }
+
+        return re;
+}
+
 unsigned int is_project(OPPO_PROJECT project)
 {
         return (get_project() == project?1:0);
@@ -99,6 +136,30 @@ struct file_operations prjVersion_proc_fops = {
         .write = NULL,
 };
 
+
+static ssize_t real_prjVersion_read_proc(struct file *file, char __user *buf,
+                size_t count, loff_t *off)
+{
+        char page[256] = {0};
+        int len = 0;
+        len = sprintf(page, "%d", get_real_project());
+
+        if (len > *off) {
+                len -= *off;
+        }
+        else
+                len = 0;
+        if (copy_to_user(buf, page, (len < count ? len : count))) {
+                return -EFAULT;
+        }
+        *off += len < count ? len : count;
+        return (len < count ? len : count);
+}
+
+struct file_operations real_prjVersion_proc_fops = {
+        .read = real_prjVersion_read_proc,
+        .write = NULL,
+};
 
 static ssize_t pcbVersion_read_proc(struct file *file, char __user *buf,
                 size_t count, loff_t *off)
@@ -416,6 +477,11 @@ static int __init oppo_project_init(void)
                 pr_err("create prjVersion proc failed.\n");
                 goto ERROR_INIT_VERSION;
         }
+        pentry = proc_create("real_prjVersion", S_IRUGO, oppoVersion, &real_prjVersion_proc_fops);
+        if (!pentry) {
+                pr_err("create real_prjVersion proc failed.\n");
+                goto ERROR_INIT_VERSION;
+        }    
         pentry = proc_create("pcbVersion", S_IRUGO, oppoVersion, &pcbVersion_proc_fops);
         if (!pentry) {
                 pr_err("create pcbVersion proc failed.\n");
