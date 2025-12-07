@@ -53,6 +53,7 @@ on:
         - 'builtin'
         - 'main'
         - 'ad90267593bd98c7a5c0f9fc8589b9619d77355c'
+        - 'susfs-rksu-master'
       susfs:
         type: choice
         description: '是否开启 SuspiciousFS'                
