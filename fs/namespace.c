@@ -34,6 +34,7 @@
 extern bool susfs_is_current_ksu_domain(void);
 extern bool susfs_is_boot_completed_triggered __read_mostly;
 
+static DEFINE_IDA(susfs_ksu_mnt_id_ida);
 static DEFINE_IDA(susfs_ksu_mnt_group_ida);
 static atomic64_t susfs_ksu_mounts = ATOMIC64_INIT(0);
 
@@ -119,9 +120,9 @@ static int susfs_mnt_alloc_id(struct mount *mnt)
 	int res;
 
 retry:
-	ida_pre_get(&susfs_mnt_id_ida, GFP_KERNEL);
+	ida_pre_get(&susfs_ksu_mnt_id_ida, GFP_KERNEL);
 	spin_lock(&mnt_id_lock);
-	res = ida_get_new_above(&susfs_mnt_id_ida, susfs_mnt_id_start, &mnt->mnt_id);
+	res = ida_get_new_above(&susfs_ksu_mnt_id_ida, susfs_mnt_id_start, &mnt->mnt_id);
 	if (!res)
 		susfs_mnt_id_start = mnt->mnt_id + 1;
 	spin_unlock(&mnt_id_lock);
