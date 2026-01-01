@@ -761,11 +761,7 @@ CONFIG_KSU_SUSFS_SUS_MOUNT=n
 # CONFIG_KSU_SUSFS_SUS_MOUNT is not set
 #endif
 
-#ifdef VENDOR_EDIT
-#/* Elysia add KPM. */
-CONFIG_KPM=y
 CONFIG_ARCH_HAS_SET_MEMORY=y
-#endif
 
 #ifdef VENDOR_EDIT
 #/* Elysia add Android Binderfs filesystem. */
