@@ -1156,20 +1156,8 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 	if (!type)
 		return ERR_PTR(-ENODEV);
 
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	// We keep checking for ksu process only until boot-completed stage is triggered
-	if (!susfs_is_boot_completed_triggered && susfs_is_current_ksu_domain()) {
-		mnt = susfs_alloc_sus_vfsmnt(name);
-		atomic64_add(1, &susfs_ksu_mounts);
-		goto bypass_orig_flow;
-	}
-#endif
-
 	mnt = alloc_vfsmnt(name);
 
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-bypass_orig_flow:
-#endif
 	if (!mnt)
 		return ERR_PTR(-ENOMEM);
 
