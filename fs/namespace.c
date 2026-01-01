@@ -294,7 +294,8 @@ static struct mount *susfs_reuse_sus_vfsmnt(const char *name, int orig_mnt_id)
 		mnt->mnt_writers = 0;
 #endif
 
-		mnt->mnt.data = NULL;
+		// Makes ida_free() easier to determine whether it should free the mnt_id or not
+		mnt->mnt.susfs_mnt_id_backup = DEFAULT_KSU_MNT_ID;
 
 		INIT_HLIST_NODE(&mnt->mnt_hash);
 		INIT_LIST_HEAD(&mnt->mnt_child);
@@ -317,8 +318,6 @@ static struct mount *susfs_reuse_sus_vfsmnt(const char *name, int orig_mnt_id)
 out_free_devname:
 	kfree_const(mnt->mnt_devname);
 #endif
-out_free_id:
-	mnt_free_id(mnt);
 out_free_cache:
 	kmem_cache_free(mnt_cache, mnt);
 	return NULL;
@@ -351,7 +350,8 @@ static struct mount *susfs_alloc_sus_vfsmnt(const char *name)
 		mnt->mnt_writers = 0;
 #endif
 
-		mnt->mnt.data = NULL;
+		// Makes ida_free() easier to determine whether it should free the mnt_id or not
+		mnt->mnt.susfs_mnt_id_backup = DEFAULT_KSU_MNT_ID;
 
 		INIT_HLIST_NODE(&mnt->mnt_hash);
 		INIT_LIST_HEAD(&mnt->mnt_child);
@@ -374,8 +374,6 @@ static struct mount *susfs_alloc_sus_vfsmnt(const char *name)
 out_free_devname:
 	kfree_const(mnt->mnt_devname);
 #endif
-out_free_id:
-	mnt_free_id(mnt);
 out_free_cache:
 	kmem_cache_free(mnt_cache, mnt);
 	return NULL;
@@ -1171,7 +1169,7 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	// We keep checking for ksu process only until boot-completed stage is triggered
 	if (!susfs_is_boot_completed_triggered && susfs_is_current_ksu_domain()) {
-		mnt = susfs_alloc_sus_vfsmnt(fc->source ?: "none");
+		mnt = susfs_alloc_sus_vfsmnt(name);
 		atomic64_add(1, &susfs_ksu_mounts);
 		goto bypass_orig_flow;
 	}
