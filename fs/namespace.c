@@ -293,8 +293,8 @@ static struct mount *susfs_reuse_sus_vfsmnt(const char *name, int orig_mnt_id)
 		mnt->mnt_count = 1;
 		mnt->mnt_writers = 0;
 #endif
-		// Makes ida_free() easier to determine whether it should free the mnt_id or not
-		mnt->mnt.susfs_mnt_id_backup = DEFAULT_KSU_MNT_ID;
+
+		mnt->mnt.data = NULL;
 
 		INIT_HLIST_NODE(&mnt->mnt_hash);
 		INIT_LIST_HEAD(&mnt->mnt_child);
@@ -306,6 +306,10 @@ static struct mount *susfs_reuse_sus_vfsmnt(const char *name, int orig_mnt_id)
 		INIT_LIST_HEAD(&mnt->mnt_slave);
 		INIT_HLIST_NODE(&mnt->mnt_mp_list);
 		INIT_LIST_HEAD(&mnt->mnt_umounting);
+#ifdef CONFIG_FSNOTIFY
+		INIT_HLIST_HEAD(&mnt->mnt_fsnotify_marks);
+#endif
+		init_fs_pin(&mnt->mnt_umount, drop_mountpoint);
 	}
 	return mnt;
 
@@ -313,6 +317,8 @@ static struct mount *susfs_reuse_sus_vfsmnt(const char *name, int orig_mnt_id)
 out_free_devname:
 	kfree_const(mnt->mnt_devname);
 #endif
+out_free_id:
+	mnt_free_id(mnt);
 out_free_cache:
 	kmem_cache_free(mnt_cache, mnt);
 	return NULL;
@@ -344,8 +350,8 @@ static struct mount *susfs_alloc_sus_vfsmnt(const char *name)
 		mnt->mnt_count = 1;
 		mnt->mnt_writers = 0;
 #endif
-		// Makes ida_free() easier to determine whether it should free the mnt_id or not
-		mnt->mnt.susfs_mnt_id_backup = DEFAULT_KSU_MNT_ID;
+
+		mnt->mnt.data = NULL;
 
 		INIT_HLIST_NODE(&mnt->mnt_hash);
 		INIT_LIST_HEAD(&mnt->mnt_child);
@@ -357,6 +363,10 @@ static struct mount *susfs_alloc_sus_vfsmnt(const char *name)
 		INIT_LIST_HEAD(&mnt->mnt_slave);
 		INIT_HLIST_NODE(&mnt->mnt_mp_list);
 		INIT_LIST_HEAD(&mnt->mnt_umounting);
+#ifdef CONFIG_FSNOTIFY
+		INIT_HLIST_HEAD(&mnt->mnt_fsnotify_marks);
+#endif
+		init_fs_pin(&mnt->mnt_umount, drop_mountpoint);
 	}
 	return mnt;
 
@@ -364,6 +374,8 @@ static struct mount *susfs_alloc_sus_vfsmnt(const char *name)
 out_free_devname:
 	kfree_const(mnt->mnt_devname);
 #endif
+out_free_id:
+	mnt_free_id(mnt);
 out_free_cache:
 	kmem_cache_free(mnt_cache, mnt);
 	return NULL;
@@ -1156,7 +1168,19 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 	if (!type)
 		return ERR_PTR(-ENODEV);
 
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	// We keep checking for ksu process only until boot-completed stage is triggered
+	if (!susfs_is_boot_completed_triggered && susfs_is_current_ksu_domain()) {
+		mnt = susfs_alloc_sus_vfsmnt(fc->source ?: "none");
+		atomic64_add(1, &susfs_ksu_mounts);
+		goto bypass_orig_flow;
+	}
+#endif
+
 	mnt = alloc_vfsmnt(name);
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+bypass_orig_flow:
+#endif
 
 	if (!mnt)
 		return ERR_PTR(-ENOMEM);
