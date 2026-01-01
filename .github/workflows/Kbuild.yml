@@ -34,7 +34,15 @@ on:
         default: 'false'        
         options:
         - 'true'
-        - 'false'                
+        - 'false'
+      kpm_lts:
+        type: choice
+        description: '是否使用 KPM 最新版'                
+        required: true
+        default: 'false'        
+        options:
+        - 'true'
+        - 'https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.12.2/patch_linux'                                
       ksubranch:
         type: choice
         description: '請選擇 KernelSU 的第三方分叉'                
@@ -207,7 +215,11 @@ jobs:
           if [ "${{ github.event.inputs.kpm }}" == "true" ]; then
              mkdir $GITHUB_WORKSPACE/workdir/SukiSU-Patch
              cd $GITHUB_WORKSPACE/workdir/SukiSU-Patch
-             curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kpm/patch_linux" -o patch_linux
+             if [ "${{ github.event.inputs.kpm_lts }}" == "true" ]; then 
+                curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kpm/patch_linux" -o patch_linux
+             else
+                curl -LSs "${{ github.event.inputs.kpm_lts }}" -o patch_linux
+             fi
              cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/Image .
              cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/dts/1*/*.dtb .
              chmod +x patch_linux
