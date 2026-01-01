@@ -588,9 +588,7 @@ extern int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid);
 SYSCALL_DEFINE3(setresuid, uid_t, ruid, uid_t, euid, uid_t, suid)
 {
 #ifdef CONFIG_KSU_SUSFS
-	if (ksu_handle_setresuid(ruid, euid, suid)) {
-		pr_info("Something wrong with ksu_handle_setresuid()\n");
-	}
+	(void)ksu_handle_setresuid(ruid, euid, suid);
 #endif
 
 	struct user_namespace *ns = current_user_ns();
