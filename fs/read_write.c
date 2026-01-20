@@ -561,9 +561,8 @@ static inline void file_pos_write(struct file *file, loff_t pos)
 }
 
 #ifdef CONFIG_KSU_SUSFS
-extern bool ksu_vfs_read_hook __read_mostly;
-extern __attribute__((cold)) int ksu_handle_sys_read(unsigned int fd,
-               char __user **buf_ptr, size_t *count_ptr);
+extern bool ksu_init_rc_hook __read_mostly;
+extern __attribute__((cold)) void ksu_handle_sys_read(unsigned int fd);
 #endif
 
 #if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
@@ -575,8 +574,8 @@ extern int ksu_handle_sys_read(unsigned int fd, char __user **buf_ptr,
 SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
 {
 #ifdef CONFIG_KSU_SUSFS
-	if (unlikely(ksu_vfs_read_hook))
-		ksu_handle_sys_read(fd, &buf, &count);
+	if (unlikely(ksu_init_rc_hook))
+		ksu_handle_sys_read(fd);
 #endif
 
 #if defined(CONFIG_KSU) && defined(CONFIG_KSU_MANUAL_HOOK)
