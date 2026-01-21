@@ -369,6 +369,8 @@ bool susfs_is_inode_sus_path(struct inode *inode) {
 /* sus_mount */
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 static DEFINE_SPINLOCK(susfs_spin_lock_sus_mount);
+// - Default to false now so zygisk can pick up the sus mounts without the need to turn it off manually in post-fs-data stage
+//   otherwise user needs to turn it on in post-fs-data stage and turn it off in boot-completed stage
 bool susfs_hide_sus_mnts_for_non_su_procs = false;
 
 void susfs_set_hide_sus_mnts_for_non_su_procs(void __user **user_info) {
@@ -381,13 +383,13 @@ void susfs_set_hide_sus_mnts_for_non_su_procs(void __user **user_info) {
 	spin_lock(&susfs_spin_lock_sus_mount);
 	susfs_hide_sus_mnts_for_non_su_procs = info.enabled;
 	spin_unlock(&susfs_spin_lock_sus_mount);
-    SUSFS_LOGI("susfs_hide_sus_mnts_for_non_su_procs: %d\n", info.enabled);
+	SUSFS_LOGI("susfs_hide_sus_mnts_for_non_su_procs: %d\n", info.enabled);
 	info.err = 0;
 out_copy_to_user:
 	if (copy_to_user(&((struct st_susfs_hide_sus_mnts_for_non_su_procs __user*)*user_info)->err, &info.err, sizeof(info.err))) {
 		info.err = -EFAULT;
 	}
-    SUSFS_LOGI("CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS -> ret: %d\n", info.err);
+	SUSFS_LOGI("CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS -> ret: %d\n", info.err);
 }
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
