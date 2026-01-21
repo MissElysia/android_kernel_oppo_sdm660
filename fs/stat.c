@@ -93,6 +93,11 @@ int vfs_getattr(struct path *path, struct kstat *stat)
 
 EXPORT_SYMBOL(vfs_getattr);
 
+#ifdef CONFIG_KSU_SUSFS
+extern bool ksu_init_rc_hook __read_mostly;
+extern void ksu_handle_vfs_fstat(int fd, loff_t *kstat_size_ptr);
+#endif // #ifdef CONFIG_KSU_SUSFS
+
 int vfs_fstat(unsigned int fd, struct kstat *stat)
 {
 	struct fd f = fdget_raw(fd);
@@ -122,12 +127,6 @@ extern int ksu_handle_stat(int *dfd, const char __user **filename_user, int *fla
 #endif
 
 EXPORT_SYMBOL(vfs_fstat);
-
-#ifdef CONFIG_KSU_SUSFS
-extern bool ksu_init_rc_hook __read_mostly;
-extern void ksu_handle_vfs_fstat(int fd, loff_t *kstat_size_ptr);
-#endif // #ifdef CONFIG_KSU_SUSFS
-
 int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
 		int flag)
 {
