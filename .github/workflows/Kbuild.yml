@@ -27,50 +27,6 @@ on:
         options:
         - 'true'
         - 'false'
-      kpm:
-        type: choice
-        description: '是否开启 KPM'                
-        required: true
-        default: 'false'        
-        options:
-        - 'true'
-        - 'false'
-      kpm_lts:
-        type: choice
-        description: '是否使用 KPM 最新版'                
-        required: true
-        default: 'false'        
-        options:
-        - 'true'
-        - 'https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.12.2/patch_linux'                                
-      ksubranch:
-        type: choice
-        description: '請選擇 KernelSU 的第三方分叉'                
-        required: true
-        default: 'sukisu'        
-        options:
-        - 'rissu'
-        - 'sukisu'
-        - 'debug'
-      branch:
-        type: choice
-        description: '請選擇第三方 KernelSU 的分支'                
-        required: true
-        default: 'builtin'        
-        options:
-        - 'builtin'
-        - 'tmp-builtin'
-        - 'main'
-        - 'ad90267593bd98c7a5c0f9fc8589b9619d77355c'
-        - 'susfs-rksu-master'
-      susfs:
-        type: choice
-        description: '是否开启 SuspiciousFS'                
-        required: true
-        default: 'false'        
-        options:
-        - 'true'
-        - 'false'
       device:
         type: choice
         description: '請選擇裝置名稱'        
@@ -150,36 +106,6 @@ jobs:
              echo -e "\nCONFIG_ELYSIA_DEBUG=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
           fi
 
-      - name: 添加 SusFS 功能
-        run: |
-          if [ "${{ github.event.inputs.susfs }}" == "true" ]; then
-             echo -e "\nCONFIG_KSU_SUSFS=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
-          fi
-
-      - name: 添加 Rissu
-        run: |
-          if [ "${{ github.event.inputs.ksubranch }}" == "rissu" ]; then
-             cd $GITHUB_WORKSPACE/workdir/source             
-             curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
-             cd $GITHUB_WORKSPACE/workdir
-          fi
-
-      - name: 添加 Sukisu Ultra
-        run: |
-          if [ "${{ github.event.inputs.ksubranch }}" == "sukisu" ]; then
-             cd $GITHUB_WORKSPACE/workdir/source             
-             curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/builtin/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
-             cd $GITHUB_WORKSPACE/workdir
-          fi
-
-      - name: 添加 Debug
-        run: |
-          if [ "${{ github.event.inputs.ksubranch }}" == "debug" ]; then
-             cd $GITHUB_WORKSPACE/workdir/source             
-             curl -LSs "https://raw.githubusercontent.com/mihoy3rd/SukiSU-Ultra/main/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
-             cd $GITHUB_WORKSPACE/workdir
-          fi
-
       - name: 編譯 ${{ github.event.inputs.device }} 核心
         run: |
           export KBUILD_BUILD_HOST=Github-Action
@@ -209,36 +135,12 @@ jobs:
               exit 1
           fi
 
-      - name: 修補 KPM
-        if: env.CHECK_FILE_IS_OK == 'true'
-        run: |
-          if [ "${{ github.event.inputs.kpm }}" == "true" ]; then
-             mkdir $GITHUB_WORKSPACE/workdir/SukiSU-Patch
-             cd $GITHUB_WORKSPACE/workdir/SukiSU-Patch
-             if [ "${{ github.event.inputs.kpm_lts }}" == "true" ]; then 
-                curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kpm/patch_linux" -o patch_linux
-             else
-                curl -LSs "${{ github.event.inputs.kpm_lts }}" -o patch_linux
-             fi
-             cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/Image .
-             cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/dts/1*/*.dtb .
-             chmod +x patch_linux
-             ./patch_linux
-             mv -f oImage Image
-             gzip -k Image Image.gz
-             cat Image.gz *.dtb > Image.gz-dtb
-          fi
-
       - name: 制作 ${{ github.event.inputs.device }} 嘅 Anykernel3 文檔
         if: env.CHECK_FILE_IS_OK == 'true'
         run: |
           git clone https://github.com/$GITHUB_REPOSITORY/ -b prebuilt_ak3 --depth 1 $GITHUB_WORKSPACE/workdir/ak3
           rm -r $GITHUB_WORKSPACE/workdir/ak3/.git
-          if [ "${{ github.event.inputs.kpm }}" == "true" ]; then 
-             cp $GITHUB_WORKSPACE/workdir/SukiSU-Patch/Image.gz-dtb $GITHUB_WORKSPACE/workdir/ak3
-          else
-             cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/Image.gz-dtb $GITHUB_WORKSPACE/workdir/ak3
-          fi
+          cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/Image.gz-dtb $GITHUB_WORKSPACE/workdir/ak3
 
       - name: 上傳 ${{ github.event.inputs.device }} 嘅 AnyKernel3 文檔
         if: env.CHECK_FILE_IS_OK == 'true'

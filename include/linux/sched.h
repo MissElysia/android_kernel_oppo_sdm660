@@ -971,9 +971,6 @@ struct user_struct {
 	atomic_long_t locked_vm;
 #endif
 
-    #ifdef CONFIG_KSU_SUSFS
-      u64 android_kabi_reserved2;
-    #endif
       // Android KABI reserved fields
       u64 android_kabi_reserved1;
       u64 android_kabi_reserved3;
