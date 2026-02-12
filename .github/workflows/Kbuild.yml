@@ -58,7 +58,7 @@ on:
         default: 'builtin'        
         options:
         - 'builtin'
-        - '95c0a13c1d36a8d9c386974088af328a4a0e0325'
+        - '14524ff84107fc9031e78eed38defffe109a3ce7'
         - 'susfs-rksu-master'
       susfs:
         type: choice
