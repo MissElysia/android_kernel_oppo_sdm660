@@ -758,11 +758,7 @@ CONFIG_KSU_MANUAL_SU=y
 CONFIG_KSU_NONE_HOOK=y
 #endif
 
-#ifdef VENDOR_EDIT
-#/* Elysia add KPM. */
-CONFIG_KPM=y
 CONFIG_ARCH_HAS_SET_MEMORY=y
-#endif
 
 #ifdef VENDOR_EDIT
 #/* Elysia add Android Binderfs filesystem. */
