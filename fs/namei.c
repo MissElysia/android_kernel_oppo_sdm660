@@ -1654,6 +1654,9 @@ static int lookup_fast(struct nameidata *nd,
 	struct dentry *dentry, *parent = nd->path.dentry;
 	int need_reval = 1;
 	int status = 1;
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	bool is_nd_state_lookup_last_and_open_last = (nd->state & ND_STATE_LOOKUP_LAST || nd->state & ND_STATE_OPEN_LAST);
+#endif
 	int err;
 
 	/*
@@ -1664,7 +1667,33 @@ static int lookup_fast(struct nameidata *nd,
 	if (nd->flags & LOOKUP_RCU) {
 		unsigned seq;
 		bool negative;
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+		unsigned backup_next_seq;
+
+		if (is_nd_state_lookup_last_and_open_last && parent->d_inode) {
+			if (susfs_is_base_dentry_android_data_dir(parent) &&
+				susfs_is_sus_android_data_d_name_found(nd->last.name))
+			{
+				dentry = __d_lookup_rcu(parent, &susfs_fake_qstr_name, &seq);
+				goto skip_orig_flow1;
+			} else if (susfs_is_base_dentry_sdcard_dir(parent) &&
+					   susfs_is_sus_sdcard_d_name_found(nd->last.name))
+			{
+				dentry = __d_lookup_rcu(parent, &susfs_fake_qstr_name, &seq);
+				goto skip_orig_flow1;
+			}
+		}
+#endif
 		dentry = __d_lookup_rcu(parent, &nd->last, &seq);
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+		if (is_nd_state_lookup_last_and_open_last && dentry && !IS_ERR(dentry) && dentry->d_inode) {
+			if (susfs_is_inode_sus_path(dentry->d_inode)) {
+				dput(dentry);
+				dentry = __d_lookup_rcu(parent, &susfs_fake_qstr_name, &backup_next_seq);
+			}
+		}
+skip_orig_flow1:
+#endif
 		if (!dentry)
 			goto unlazy;
 
@@ -1710,7 +1739,31 @@ unlazy:
 		if (unlazy_walk(nd, dentry, seq))
 			return -ECHILD;
 	} else {
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+		if (is_nd_state_lookup_last_and_open_last && parent->d_inode) {
+			if (susfs_is_base_dentry_android_data_dir(parent) &&
+				susfs_is_sus_android_data_d_name_found(nd->last.name))
+			{
+				dentry = __d_lookup(parent, &susfs_fake_qstr_name);
+				goto skip_orig_flow2;
+			} else if (susfs_is_base_dentry_sdcard_dir(parent) &&
+					   susfs_is_sus_sdcard_d_name_found(nd->last.name))
+			{
+				dentry = __d_lookup(parent, &susfs_fake_qstr_name);
+				goto skip_orig_flow2;
+			}
+		}
+#endif
 		dentry = __d_lookup(parent, &nd->last);
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+		if (is_nd_state_lookup_last_and_open_last && dentry && !IS_ERR(dentry) && dentry->d_inode) {
+			if (susfs_is_inode_sus_path(dentry->d_inode)) {
+				dput(dentry);
+				dentry = __d_lookup(parent, &susfs_fake_qstr_name);
+			}
+		}
+skip_orig_flow2:
+#endif
 	}
 
 	if (unlikely(!dentry))
