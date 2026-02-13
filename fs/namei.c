@@ -36,12 +36,21 @@
 #include <linux/posix_acl.h>
 #include <linux/hash.h>
 #include <asm/uaccess.h>
-#if defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)
+#if defined(CONFIG_KSU_SUSFS_SUS_PATH) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)
 #include <linux/susfs_def.h>
 #endif
 
 #include "internal.h"
 #include "mount.h"
+
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+extern bool susfs_is_sus_android_data_d_name_found(const char *d_name);
+extern bool susfs_is_sus_sdcard_d_name_found(const char *d_name);
+extern bool susfs_is_inode_sus_path(struct inode *inode);
+extern bool susfs_is_base_dentry_android_data_dir(struct dentry* base);
+extern bool susfs_is_base_dentry_sdcard_dir(struct dentry* base);
+extern const struct qstr susfs_fake_qstr_name;
+#endif
 
 /* [Feb-1997 T. Schoebel-Theuer]
  * Fundamental changes in the pathname lookup mechanisms (namei)
@@ -518,6 +527,9 @@ struct nameidata {
 	struct path	root;
 	struct inode	*inode; /* path.dentry.d_inode */
 	unsigned int	flags;
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	unsigned int	state;
+#endif
 	unsigned	seq, m_seq;
 	int		last_type;
 	unsigned	depth;
@@ -544,6 +556,9 @@ static void set_nameidata(struct nameidata *p, int dfd, struct filename *name)
 	p->total_link_count = old ? old->total_link_count : 0;
 	p->saved = old;
 	current->nameidata = p;
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	p->state = 0;
+#endif
 }
 
 static void restore_nameidata(void)
@@ -1583,10 +1598,45 @@ static struct dentry *__lookup_hash(struct qstr *name,
 {
 	bool need_lookup;
 	struct dentry *dentry;
-
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	bool found_sus_path = false;
+#else
 	dentry = lookup_dcache(name, base, flags, &need_lookup);
+#endif
+
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	if (base && base->d_inode && !found_sus_path) {
+		if (susfs_is_base_dentry_android_data_dir(base) &&
+			susfs_is_sus_android_data_d_name_found(name->name))
+		{
+			dentry = lookup_dcache(&susfs_fake_qstr_name, base, flags, &need_lookup);
+			found_sus_path = true;
+			goto retry;
+		} else if (susfs_is_base_dentry_sdcard_dir(base) &&
+				   susfs_is_sus_sdcard_d_name_found(name->name))
+		{
+			dentry = lookup_dcache(&susfs_fake_qstr_name, base, flags, &need_lookup);
+			found_sus_path = true;
+			goto retry;
+		}
+	}
+	dentry = lookup_dcache(name, base, flags, &need_lookup);
+retry:
+#endif
 	if (!need_lookup)
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	{
+		if (!found_sus_path && !IS_ERR(dentry) && dentry->d_inode && susfs_is_inode_sus_path(dentry->d_inode)) {
+			dput(dentry);
+			dentry = lookup_dcache(&susfs_fake_qstr_name, base, flags, &need_lookup);
+			found_sus_path = true;
+			goto retry;
+		}
 		return dentry;
+	}
+#else
+		return dentry;
+#endif
 
 	return lookup_real(base->d_inode, dentry, flags);
 }
