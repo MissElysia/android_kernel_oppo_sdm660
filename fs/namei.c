@@ -1598,45 +1598,10 @@ static struct dentry *__lookup_hash(struct qstr *name,
 {
 	bool need_lookup;
 	struct dentry *dentry;
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-	bool found_sus_path = false;
-#else
 	dentry = lookup_dcache(name, base, flags, &need_lookup);
-#endif
 
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-	if (base && base->d_inode && !found_sus_path) {
-		if (susfs_is_base_dentry_android_data_dir(base) &&
-			susfs_is_sus_android_data_d_name_found(name->name))
-		{
-			dentry = lookup_dcache(&susfs_fake_qstr_name, base, flags, &need_lookup);
-			found_sus_path = true;
-			goto retry;
-		} else if (susfs_is_base_dentry_sdcard_dir(base) &&
-				   susfs_is_sus_sdcard_d_name_found(name->name))
-		{
-			dentry = lookup_dcache(&susfs_fake_qstr_name, base, flags, &need_lookup);
-			found_sus_path = true;
-			goto retry;
-		}
-	}
-	dentry = lookup_dcache(name, base, flags, &need_lookup);
-retry:
-#endif
 	if (!need_lookup)
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-	{
-		if (!found_sus_path && !IS_ERR(dentry) && dentry->d_inode && susfs_is_inode_sus_path(dentry->d_inode)) {
-			dput(dentry);
-			dentry = lookup_dcache(&susfs_fake_qstr_name, base, flags, &need_lookup);
-			found_sus_path = true;
-			goto retry;
-		}
 		return dentry;
-	}
-#else
-		return dentry;
-#endif
 
 	return lookup_real(base->d_inode, dentry, flags);
 }
