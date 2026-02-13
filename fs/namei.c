@@ -3184,7 +3184,7 @@ static int lookup_open(struct nameidata *nd, struct path *path,
 	if (is_nd_state_open_last && dentry && !IS_ERR(dentry) && dentry->d_inode) {
 		if (susfs_is_inode_sus_path(dentry->d_inode)) {
 			dput(dentry);
-			dentry = lookup_dcache(&susfs_fake_qstr_name dir, nd->flags, &need_lookup);
+			dentry = lookup_dcache(&susfs_fake_qstr_name, dir, nd->flags, &need_lookup);
 			found_sus_path = true;
 		}
 	}
