@@ -27,22 +27,6 @@ on:
         options:
         - 'true'
         - 'false'
-      kpm:
-        type: choice
-        description: '是否开启 KPM'                
-        required: true
-        default: 'false'        
-        options:
-        - 'true'
-        - 'false'
-      kpm_lts:
-        type: choice
-        description: '是否使用 KPM 最新版'                
-        required: true
-        default: 'false'        
-        options:
-        - 'true'
-        - 'https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.12.2/patch_linux'                                
       ksubranch:
         type: choice
         description: '請選擇 KernelSU 的第三方分叉'                
