@@ -3150,7 +3150,6 @@ static int lookup_open(struct nameidata *nd, struct path *path,
 			dput(dentry);
 			dentry = NULL;
 			found_sus_path = true;
-		}
 	}
 #endif
 	if (IS_ERR(dentry))
