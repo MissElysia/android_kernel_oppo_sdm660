@@ -32,9 +32,8 @@
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 extern bool susfs_is_current_ksu_domain(void);
-extern bool susfs_is_boot_completed_triggered __read_mostly;
+extern bool susfs_is_sdcard_android_data_decrypted __read_mostly;
 
-static DEFINE_IDA(susfs_ksu_mnt_group_ida);
 static atomic64_t susfs_ksu_mounts = ATOMIC64_INIT(0);
 
 static int susfs_mnt_group_start = DEFAULT_KSU_MNT_GROUP_ID;
@@ -170,15 +169,16 @@ static int mnt_alloc_group_id(struct mount *mnt)
 	int res;
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	/* - At frist susfs_is_boot_completed_triggered is set to false in kernel,
-	 *   and it is still allowed to assign our custom mnt_group_id via susfs_ksu_mnt_group_ida
-	 *   if it is ksu mounts, until susfs_is_boot_completed_triggered is set to true
-	 *   when boot-completed stage is triggered in core_hook.c 
+	/* - mnt_alloc_group_id will unlikely get called after screen is unlocked on reboot,
+	 *   so here we can persistently check if current is ksu domain, and assign a sus
+	 *   mnt_group_id if so.
+	 * - Also we can re-use the original mnt_group_ida so there is no need to use
+	 *   another ida nor hook the mnt_release_group_id() function.
 	 */
-	if (!susfs_is_boot_completed_triggered && mnt->mnt_id >= DEFAULT_KSU_MNT_ID) {
-		if (!ida_pre_get(&susfs_ksu_mnt_group_ida, GFP_KERNEL))
+	if (susfs_is_current_ksu_domain()) {
+		if (!ida_pre_get(&mnt_group_ida, GFP_KERNEL))
 			return -ENOMEM;
-		res = ida_get_new_above(&susfs_ksu_mnt_group_ida,
+		res = ida_get_new_above(&mnt_group_ida,
 					susfs_mnt_group_start,
 					&mnt->mnt_group_id);
 		if (!res)
@@ -203,24 +203,6 @@ static int mnt_alloc_group_id(struct mount *mnt)
 void mnt_release_group_id(struct mount *mnt)
 {
 	int id = mnt->mnt_group_id;
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	/* - when boot-completed stage is triggered in core_hook.c,
-	 *   susfs_is_boot_completed_triggered will be set to true.
-	 * - Please note that if susfs_is_boot_completed_triggered is true, then
-	 *   it no longer checks for the sus mnt_group_id, and the allocated
-	 *   sus mnt_group_id will stay in kernel memory forever, and if user
-	 *   suddenly umounts the sus mount in global mnt namespace, the ida_free()
-	 *   function will throw error to kernel log, but it won't affect the system,
-	 *   so it is fine.
-	 */
-	if (!susfs_is_boot_completed_triggered && mnt->mnt_group_id >= DEFAULT_KSU_MNT_GROUP_ID) {
-		ida_remove(&susfs_ksu_mnt_group_ida, id);
-		if (susfs_mnt_group_start > id)
-			susfs_mnt_group_start = id;
-		mnt->mnt_group_id = 0;
-		return;
-	}
-#endif
 	ida_remove(&mnt_group_ida, id);
 	if (mnt_group_start > id)
 		mnt_group_start = id;
@@ -1168,7 +1150,7 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	// We keep checking for ksu process only until boot-completed stage is triggered
-	if (!susfs_is_boot_completed_triggered && susfs_is_current_ksu_domain()) {
+	if (!susfs_is_sdcard_android_data_decrypted && susfs_is_current_ksu_domain()) {
 		mnt = susfs_alloc_sus_vfsmnt(name);
 		atomic64_add(1, &susfs_ksu_mounts);
 		goto bypass_orig_flow;
@@ -1222,7 +1204,7 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	// - We do not check anymore for ksu process if boot-completed stage is triggered
 	//   just to stop the performance loss
-	if (susfs_is_boot_completed_triggered) {
+	if (susfs_is_sdcard_android_data_decrypted) {
 		goto skip_checking_for_ksu_proc;
 	}
 
@@ -3825,27 +3807,33 @@ void susfs_reorder_mnt_id(void) {
 	struct mount *mnt;
 	int first_mnt_id = 0;
 
-	if (!mnt_ns) {
-		return;
-	}
-
 	// Do not reorder the mnt_id if there is no any ksu mount at all
-	if (atomic64_read(&susfs_ksu_mounts) == 0) {
+	if (atomic64_read(&susfs_ksu_mounts) == 0)
 		return;
-	}
 
-	get_mnt_ns(mnt_ns);
+	down_read(&namespace_sem); // needed when manipulating mnt_namespace
+	lock_ns_list(mnt_ns); // needed when traversing mnt_ns->list
+	lock_mount_hash(); // needed when modifying mount
 
+// - It is safe here as there should not be any first mnt with the sus mnt_id,
+	//   mount cloned by ksu proc is already handled in clone_mnt()
 	first_mnt_id = list_first_entry(&mnt_ns->list, struct mount, mnt_list)->mnt_id;
 	list_for_each_entry(mnt, &mnt_ns->list, mnt_list) {
-		// It is very important that we don't reorder the sus mount if it is not umounted
-		if (mnt->mnt_id == DEFAULT_KSU_MNT_ID) {
+// - We need to use mnt_is_cursor() to check if mnt is being looked up in
+		//   /proc/[mounts|mountinfo|mountstat], since mounts_open_common() will set 
+		//   the flag MNT_CURSOR on p->cursor.mnt.mnt_flags, skip it if so
+		if (mnt_is_cursor(mnt))
 			continue;
-		}
+		// It is very important that we don't reorder the sus mount if it is not umounted
+		if (mnt->mnt_id == DEFAULT_KSU_MNT_ID)
+			continue;
+		// We just still explicitly tell compiler not to optimizie this
 		WRITE_ONCE(mnt->mnt.susfs_mnt_id_backup, READ_ONCE(mnt->mnt_id));
 		WRITE_ONCE(mnt->mnt_id, first_mnt_id++);
 	}
 
-	put_mnt_ns(mnt_ns);
+	unlock_mount_hash();
+	unlock_ns_list(mnt_ns);
+	up_read(&namespace_sem);
 }
 #endif
