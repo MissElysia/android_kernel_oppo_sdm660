@@ -160,7 +160,7 @@ jobs:
         run: |
           if [ "${{ github.event.inputs.ksubranch }}" == "mihoy3rd" ]; then
              cd $GITHUB_WORKSPACE/workdir/source             
-             curl -LSs "https://raw.githubusercontent.com/mihoy3rd/SukiSU-Ultra/main/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
+             curl -LSs "https://raw.githubusercontent.com/mihoy3rd/SukiSU-Ultra/builtin/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
              cd $GITHUB_WORKSPACE/workdir
           fi
 
