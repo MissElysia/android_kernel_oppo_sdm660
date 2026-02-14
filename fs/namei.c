@@ -1606,7 +1606,6 @@ static struct dentry *__lookup_hash(struct qstr *name,
 			dput(dentry);
 			dentry = lookup_dcache(&susfs_fake_qstr_name, base, flags, &need_lookup);
 			found_sus_path = true;
-			goto retry;
 		}
 		return dentry;
 	}
