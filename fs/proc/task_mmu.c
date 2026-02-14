@@ -1483,7 +1483,7 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 		vma = find_vma(mm, start_vaddr);
 		if (vma && vma->vm_file) {
 			struct inode *inode = file_inode(vma->vm_file);
-			if (unlikely(inode->i_mapping->flags & BIT_SUS_MAPS) && susfs_is_current_proc_umounted()) {
+			if (unlikely(test_bit(AS_FLAGS_SUS_MAP, &inode->i_mapping->flags) && susfs_is_current_proc_umounted()) {
 				pm.buffer->pme = 0;
 			}
 		}
