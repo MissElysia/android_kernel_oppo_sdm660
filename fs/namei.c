@@ -1650,7 +1650,6 @@ static int lookup_fast(struct nameidata *nd,
 		{
 				dput(dentry);
 				dentry = NULL;
-			}
 		}
 #endif
 		if (!dentry)
@@ -1705,7 +1704,6 @@ unlazy:
 		{
 				dput(dentry);
 				dentry = NULL;
-			}
 		}
 #endif
 	}
