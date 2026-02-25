@@ -13,7 +13,7 @@
 #include "proc/internal.h" /* only for get_proc_task() in ->open() */
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 #include <linux/susfs_def.h>
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 #include "pnode.h"
 #include "internal.h"
@@ -21,7 +21,7 @@
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 extern bool susfs_hide_sus_mnts_for_non_su_procs;
 extern bool susfs_is_current_ksu_domain(void);
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 static unsigned mounts_poll(struct file *file, poll_table *wait)
 {
@@ -114,7 +114,7 @@ static int show_vfsmnt(struct seq_file *m, struct vfsmount *mnt)
 	{
 		return 0;
 	}
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 	if (sb->s_op->show_devname) {
 		err = sb->s_op->show_devname(m, mnt_path.dentry);
@@ -159,7 +159,7 @@ static int show_mountinfo(struct seq_file *m, struct vfsmount *mnt)
 	{
 		return 0;
 	}
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	seq_printf(m, "%i %i %u:%u ", r->mnt_id, r->mnt_parent->mnt_id,
 		   MAJOR(sb->s_dev), MINOR(sb->s_dev));
 	if (sb->s_op->show_path)
@@ -229,7 +229,7 @@ static int show_vfsstat(struct seq_file *m, struct vfsmount *mnt)
 	{
 		return 0;
 	}
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 	/* device */
 	if (sb->s_op->show_devname) {

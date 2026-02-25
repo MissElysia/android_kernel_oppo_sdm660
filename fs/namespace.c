@@ -32,9 +32,8 @@
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 extern bool susfs_is_current_ksu_domain(void);
+extern bool susfs_is_current_zygote_domain(void);
 extern bool susfs_is_sdcard_android_data_decrypted __read_mostly;
-
-static atomic64_t susfs_ksu_mounts = ATOMIC64_INIT(0);
 
 static int susfs_mnt_group_start = DEFAULT_KSU_MNT_GROUP_ID;
 
@@ -134,24 +133,6 @@ retry:
 static void mnt_free_id(struct mount *mnt)
 {
 	int id = mnt->mnt_id;
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	int mnt_id_backup = mnt->mnt.susfs_mnt_id_backup;
-	// First we have to check if susfs_mnt_id_backup == DEFAULT_KSU_MNT_ID,
-	// if so, no need to free.
-	if (mnt_id_backup == DEFAULT_KSU_MNT_ID) {
-		return;
-	}
-	// Second if susfs_mnt_id_backup was set after mnt_id reorder, free it if so.
-	if (likely(mnt_id_backup)) {
-		spin_lock(&mnt_id_lock);
-		ida_remove(&mnt_id_ida, mnt_id_backup);
-		if (mnt_id_start > mnt_id_backup)
-			mnt_id_start = mnt_id_backup;
-		spin_unlock(&mnt_id_lock);
-		return;
-	}
-#endif
-
 	spin_lock(&mnt_id_lock);
 	ida_remove(&mnt_id_ida, id);
 	if (mnt_id_start > id)
@@ -185,7 +166,7 @@ static int mnt_alloc_group_id(struct mount *mnt)
 			susfs_mnt_group_start = mnt->mnt_group_id + 1;
 	    return res;
 	}
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	if (!ida_pre_get(&mnt_group_ida, GFP_KERNEL))
 		return -ENOMEM;
 
@@ -251,18 +232,31 @@ static void drop_mountpoint(struct fs_pin *p)
 }
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-/* A copy of alloc_vfsmnt() but reuse the original mnt_id to mnt */
-static struct mount *susfs_reuse_sus_vfsmnt(const char *name, int orig_mnt_id)
+/* A copy of alloc_vfsmnt() but allocates the fake mnt_id for mounts
+ * that are unshared by ksu process
+ */
+static struct mount *susfs_alloc_unshare_ksu_vfsmnt(const char *name)
 {
 	struct mount *mnt = kmem_cache_zalloc(mnt_cache, GFP_KERNEL);
+	
+	int res;
+
 	if (mnt) {
-		mnt->mnt_id = orig_mnt_id;
+		if (!ida_pre_get(&mnt_group_ida, GFP_KERNEL))
+			return -ENOMEM;
+		res = ida_get_new_above(&mnt_group_ida,
+					DEFAULT_UNSHARE_KSU_MNT_ID,
+					&mnt->mnt_group_id);
+		if (res < 0) {
+			goto out_free_cache;
+		}
+		mnt->mnt_id = res;
 
 		if (name) {
 			mnt->mnt_devname = kstrdup_const(name,
 							 GFP_KERNEL);
 			if (!mnt->mnt_devname)
-				goto out_free_cache;
+				goto out_free_id;
 		}
 
 #ifdef CONFIG_SMP
@@ -275,9 +269,6 @@ static struct mount *susfs_reuse_sus_vfsmnt(const char *name, int orig_mnt_id)
 		mnt->mnt_count = 1;
 		mnt->mnt_writers = 0;
 #endif
-
-		// Makes ida_free() easier to determine whether it should free the mnt_id or not
-		mnt->mnt.susfs_mnt_id_backup = DEFAULT_KSU_MNT_ID;
 
 		INIT_HLIST_NODE(&mnt->mnt_hash);
 		INIT_LIST_HEAD(&mnt->mnt_child);
@@ -300,11 +291,13 @@ static struct mount *susfs_reuse_sus_vfsmnt(const char *name, int orig_mnt_id)
 out_free_devname:
 	kfree_const(mnt->mnt_devname);
 #endif
+out_free_id:
+	mnt_free_id(mnt);
 out_free_cache:
 	kmem_cache_free(mnt_cache, mnt);
 	return NULL;
 }
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 /* A copy of alloc_vfsmnt() but allocates the fake mnt_id to mnt */
@@ -387,10 +380,6 @@ static struct mount *alloc_vfsmnt(const char *name)
 #else
 		mnt->mnt_count = 1;
 		mnt->mnt_writers = 0;
-#endif
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-		// Make sure mnt->mnt.susfs_mnt_id_backup is initialized every time.
-		mnt->mnt.susfs_mnt_id_backup = 0;
 #endif
 
 		mnt->mnt.data = NULL;
@@ -1149,10 +1138,10 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 		return ERR_PTR(-ENODEV);
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	// We keep checking for ksu process only until boot-completed stage is triggered
+	// - We will just stop checking for ksu process if /sdcard/Android is accessible,
+	//   for the sake of performance
 	if (!susfs_is_sdcard_android_data_decrypted && susfs_is_current_ksu_domain()) {
-		mnt = susfs_alloc_sus_vfsmnt(name);
-		atomic64_add(1, &susfs_ksu_mounts);
+		mnt = susfs_alloc_non_unshare_ksu_vfsmnt(name);
 		goto bypass_orig_flow;
 	}
 #endif
@@ -1160,7 +1149,7 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 	mnt = alloc_vfsmnt(name);
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 bypass_orig_flow:
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 	if (!mnt)
 		return ERR_PTR(-ENOMEM);
@@ -1202,35 +1191,37 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 	struct mount *mnt;
 	int err;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	// - We do not check anymore for ksu process if boot-completed stage is triggered
-	//   just to stop the performance loss
+	// - We will just stop checking for ksu process if /sdcard/Android is accessible,
+	//   for the sake of performance
 	if (susfs_is_sdcard_android_data_decrypted) {
 		goto skip_checking_for_ksu_proc;
 	}
 
-	// First we must check for ksu process because of magic mount
+	// - If /sdcard/Android is still not accessible, we keep checking for mounts
+	//   mounted by ksu process
 	if (susfs_is_current_ksu_domain()) {
-		// if it is unsharing, we reuse the old->mnt_id
+		// if it is unsharing, we assign the fake mnt_id starting with DEFAULT_UNSHARE_KSU_MNT_ID
 		if (flag & CL_COPY_MNT_NS) {
-			mnt = susfs_reuse_sus_vfsmnt(old->mnt_devname, old->mnt_id);
+			mnt = susfs_alloc_unshare_ksu_vfsmnt(old->mnt_devname);
 			goto bypass_orig_flow;
 		}
-		// else we just go assign fake mnt_id
-		mnt = susfs_alloc_sus_vfsmnt(old->mnt_devname);
+		// else we just go assign fake mnt_id starting with DEFAULT_KSU_MNT_ID
+		mnt = susfs_alloc_non_unshare_ksu_vfsmnt(old->mnt_devname);
 		goto bypass_orig_flow;
 	}
 
 skip_checking_for_ksu_proc:
-	// Lastly for other processes of which old->mnt_id == DEFAULT_KSU_MNT_ID, go assign fake mnt_id
-	if (old->mnt_id == DEFAULT_KSU_MNT_ID) {
-		mnt = susfs_alloc_sus_vfsmnt(old->mnt_devname);
+	// - We keep checking all processes and if old->mnt_id >= DEFAULT_KSU_MNT_ID,
+	//   go assign fake mnt_id starting with DEFAULT_KSU_MNT_ID
+	if (old->mnt_id >= DEFAULT_KSU_MNT_ID) {
+		mnt = susfs_alloc_non_unshare_ksu_vfsmnt(old->mnt_devname);
 		goto bypass_orig_flow;
 	}
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	mnt = alloc_vfsmnt(old->mnt_devname);
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 bypass_orig_flow:
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	if (!mnt)
 		return ERR_PTR(-ENOMEM);
 
@@ -3238,7 +3229,7 @@ struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
 		copy_flags |= CL_SHARED_TO_SLAVE | CL_UNPRIVILEGED;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	copy_flags |= CL_COPY_MNT_NS;
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	new = copy_tree(old, old->mnt.mnt_root, copy_flags);
 	if (IS_ERR(new)) {
 		namespace_unlock();
@@ -3799,41 +3790,3 @@ const struct proc_ns_operations mntns_operations = {
 	.install	= mntns_install,
 	.owner		= mntns_owner,
 };
-
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-/* Reorder the mnt_id after all sus mounts are umounted during ksu_handle_setuid() */
-void susfs_reorder_mnt_id(void) {
-	struct mnt_namespace *mnt_ns = current->nsproxy->mnt_ns;
-	struct mount *mnt;
-	int first_mnt_id = 0;
-
-	// Do not reorder the mnt_id if there is no any ksu mount at all
-	if (atomic64_read(&susfs_ksu_mounts) == 0)
-		return;
-
-	get_mnt_ns(mnt_ns); // needed when traversing mnt_ns->list
-	down_read(&namespace_sem); // needed when manipulating mnt_namespace
-	lock_mount_hash(); // needed when modifying mount
-
-// - It is safe here as there should not be any first mnt with the sus mnt_id,
-	//   mount cloned by ksu proc is already handled in clone_mnt()
-	first_mnt_id = list_first_entry(&mnt_ns->list, struct mount, mnt_list)->mnt_id;
-	list_for_each_entry(mnt, &mnt_ns->list, mnt_list) {
-// - We need to use mnt_is_cursor() to check if mnt is being looked up in
-		//   /proc/[mounts|mountinfo|mountstat], since mounts_open_common() will set 
-		//   the flag MNT_CURSOR on p->cursor.mnt.mnt_flags, skip it if so
-		// if (mnt_is_cursor(mnt))
-			// continue;
-		// It is very important that we don't reorder the sus mount if it is not umounted
-		if (mnt->mnt_id == DEFAULT_KSU_MNT_ID)
-			continue;
-		// We just still explicitly tell compiler not to optimizie this
-		WRITE_ONCE(mnt->mnt.susfs_mnt_id_backup, READ_ONCE(mnt->mnt_id));
-		WRITE_ONCE(mnt->mnt_id, first_mnt_id++);
-	}
-
-	unlock_mount_hash();
-	up_read(&namespace_sem);
-	put_mnt_ns(mnt_ns);
-}
-#endif

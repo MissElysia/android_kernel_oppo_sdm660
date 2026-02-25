@@ -3571,6 +3571,7 @@ struct file *do_filp_open(int dfd, struct filename *pathname,
 	struct file *filp;
 #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 	struct filename *fake_pathname;
+	struct inode *inode;
 #endif
 
 	set_nameidata(&nd, dfd, pathname);
@@ -3580,11 +3581,13 @@ struct file *do_filp_open(int dfd, struct filename *pathname,
 	if (unlikely(filp == ERR_PTR(-ESTALE)))
 		filp = path_openat(&nd, op, flags | LOOKUP_REVAL);
 #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-	if (!IS_ERR(filp) &&
-		unlikely(test_bit(AS_FLAGS_OPEN_REDIRECT, &filp->f_inode->i_mapping->flags) &&
-		current_uid().val < 2000))
+	if (!IS_ERR(filp)) {
+		inode = file_inode(filp);
+		if (inode->i_mapping &&
+			unlikely(test_bit(AS_FLAGS_OPEN_REDIRECT, &inode->i_mapping->flags)) &&
+			current_uid().val < 2000)
 	{
-		fake_pathname = susfs_get_redirected_path(filp->f_inode->i_ino);
+		fake_pathname = susfs_get_redirected_path(inode->i_ino);
 		if (!IS_ERR(fake_pathname)) {
 			restore_nameidata();
 			filp_close(filp, NULL);
@@ -3600,6 +3603,7 @@ struct file *do_filp_open(int dfd, struct filename *pathname,
 			return filp;
 		}
 	}
+}
 #endif
 	restore_nameidata();
 	return filp;
