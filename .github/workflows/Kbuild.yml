@@ -35,6 +35,7 @@ on:
         options:
         - 'rissu'
         - 'sukisu'
+        - 'resukisu'
         - 'mihoy3rd'
       branch:
         type: choice
@@ -148,11 +149,19 @@ jobs:
              cd $GITHUB_WORKSPACE/workdir
           fi
 
-      - name: 添加 Sukisu Ultra
+      - name: 添加 SukiSU Ultra
         run: |
           if [ "${{ github.event.inputs.ksubranch }}" == "sukisu" ]; then
              cd $GITHUB_WORKSPACE/workdir/source             
              curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/builtin/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
+             cd $GITHUB_WORKSPACE/workdir
+          fi
+
+      - name: 添加 Re:Sukisu
+        run: |
+          if [ "${{ github.event.inputs.ksubranch }}" == "resukisu" ]; then
+             cd $GITHUB_WORKSPACE/workdir/source             
+             curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash -s ${{ github.event.inputs.branch }}
              cd $GITHUB_WORKSPACE/workdir
           fi
 
