@@ -297,7 +297,6 @@ out_free_cache:
 	kmem_cache_free(mnt_cache, mnt);
 	return NULL;
 }
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 /* A copy of alloc_vfsmnt() but allocates the fake mnt_id for mounts
  * that are unshared by ksu process
