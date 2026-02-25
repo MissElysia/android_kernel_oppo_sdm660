@@ -44,6 +44,7 @@ on:
         default: 'builtin'        
         options:
         - 'builtin'
+        - 'main'
         - '14524ff84107fc9031e78eed38defffe109a3ce7'
         - 'df2b414dc133fb1184567a54c8e08315f6dcc731'
         - '850183c9694aa5fa84d01687c018b84732cb6021'
