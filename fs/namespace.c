@@ -232,10 +232,10 @@ static void drop_mountpoint(struct fs_pin *p)
 }
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-/* A copy of alloc_vfsmnt() but allocates the fake mnt_id for mounts
- * that are unshared by ksu process
+/* A copy of alloc_vfsmnt() but allocates the fake mnt_id for mount
+ * that is mounted or single cloned by ksu process
  */
-static struct mount *susfs_alloc_unshare_ksu_vfsmnt(const char *name)
+static struct mount *susfs_alloc_non_unshare_ksu_vfsmnt(const char *name)
 {
 	struct mount *mnt = kmem_cache_zalloc(mnt_cache, GFP_KERNEL);
 	
@@ -243,7 +243,7 @@ static struct mount *susfs_alloc_unshare_ksu_vfsmnt(const char *name)
 
 	if (mnt) {
 		if (!ida_pre_get(&mnt_group_ida, GFP_KERNEL))
-			return -ENOMEM;
+			return ERR_PTR(-ENOMEM);
 		res = ida_get_new_above(&mnt_group_ida,
 					DEFAULT_UNSHARE_KSU_MNT_ID,
 					&mnt->mnt_group_id);
@@ -299,19 +299,31 @@ out_free_cache:
 }
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-/* A copy of alloc_vfsmnt() but allocates the fake mnt_id to mnt */
-static struct mount *susfs_alloc_sus_vfsmnt(const char *name)
+/* A copy of alloc_vfsmnt() but allocates the fake mnt_id for mounts
+ * that are unshared by ksu process
+ */
+static struct mount *susfs_alloc_unshare_ksu_vfsmnt(const char *name)
 {
 	struct mount *mnt = kmem_cache_zalloc(mnt_cache, GFP_KERNEL);
+	
+	int res;
+
 	if (mnt) {
-		mnt->mnt_id = DEFAULT_KSU_MNT_ID;
+		if (!ida_pre_get(&mnt_group_ida, GFP_KERNEL))
+			return ERR_PTR(-ENOMEM);
+		res = ida_get_new_above(&mnt_group_ida,
+					DEFAULT_UNSHARE_KSU_MNT_ID,
+					&mnt->mnt_group_id);
+		if (res < 0) {
+			goto out_free_cache;
+		}
+		mnt->mnt_id = res;
 
 		if (name) {
 			mnt->mnt_devname = kstrdup_const(name,
 							 GFP_KERNEL);
 			if (!mnt->mnt_devname)
-				goto out_free_cache;
+				goto out_free_id;
 		}
 
 #ifdef CONFIG_SMP
@@ -324,9 +336,6 @@ static struct mount *susfs_alloc_sus_vfsmnt(const char *name)
 		mnt->mnt_count = 1;
 		mnt->mnt_writers = 0;
 #endif
-
-		// Makes ida_free() easier to determine whether it should free the mnt_id or not
-		mnt->mnt.susfs_mnt_id_backup = DEFAULT_KSU_MNT_ID;
 
 		INIT_HLIST_NODE(&mnt->mnt_hash);
 		INIT_LIST_HEAD(&mnt->mnt_child);
@@ -349,11 +358,13 @@ static struct mount *susfs_alloc_sus_vfsmnt(const char *name)
 out_free_devname:
 	kfree_const(mnt->mnt_devname);
 #endif
+out_free_id:
+	mnt_free_id(mnt);
 out_free_cache:
 	kmem_cache_free(mnt_cache, mnt);
 	return NULL;
 }
-#endif
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 static struct mount *alloc_vfsmnt(const char *name)
 {
