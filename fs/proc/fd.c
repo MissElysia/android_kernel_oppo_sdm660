@@ -88,7 +88,7 @@ static int seq_show(struct seq_file *m, void *v)
 
 		seq_printf(m, "pos:\t%lli\nflags:\t0%o\nmnt_id:\t%i\nino:\t%lu\n",
 				(long long)file->f_pos, f_flags,
-					susfs_get_non_sus_mnt_from_mnt(mnt)->mnt_id,);
+					susfs_get_non_sus_mnt_from_mnt(mnt)->mnt_id);
 		path_put(&path);
 		kfree(pathname);
 		goto bypass_orig_flow;
