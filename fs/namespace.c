@@ -202,6 +202,7 @@ static int mnt_alloc_group_id(struct mount *mnt)
  */
 void mnt_release_group_id(struct mount *mnt)
 {
+	int id = mnt->mnt_group_id;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	if (mnt->mnt_group_id >= DEFAULT_KSU_MNT_GROUP_ID) {
 		ida_remove(&susfs_mnt_group_ida, mnt->mnt_group_id);
@@ -211,8 +212,6 @@ void mnt_release_group_id(struct mount *mnt)
 		return;
 	}
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-
-	int id = mnt->mnt_group_id;
 	ida_remove(&mnt_group_ida, id);
 	if (mnt_group_start > id)
 		mnt_group_start = id;
@@ -270,10 +269,6 @@ static struct mount *susfs_alloc_unshare_ksu_vfsmnt(const char *name, int old_mn
 	
 	if (mnt) {
 		mnt->mnt_id = old_mnt_id;
-		if (res < 0) {
-			goto out_free_cache;
-		}
-		mnt->mnt_id = res;
 
 		if (name) {
 			mnt->mnt_devname = kstrdup_const(name,
