@@ -135,6 +135,7 @@ retry:
 
 static void mnt_free_id(struct mount *mnt)
 {
+	int id = mnt->mnt_id;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	if (mnt->mnt_id >= DEFAULT_KSU_MNT_ID) {
 		ida_remove(&susfs_mnt_id_ida, mnt->mnt_id);
@@ -151,8 +152,6 @@ static void mnt_free_id(struct mount *mnt)
 	}
 
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-
-	int id = mnt->mnt_id;
 	spin_lock(&mnt_id_lock);
 	ida_remove(&mnt_id_ida, id);
 	if (mnt_id_start > id)
@@ -177,7 +176,7 @@ static int mnt_alloc_group_id(struct mount *mnt)
 	 *   another ida nor hook the mnt_release_group_id() function.
 	 */
 	if (susfs_is_current_ksu_domain()) {
-		if (!ida_pre_get(&susfs_mnt_group_ida GFP_KERNEL))
+		if (!ida_pre_get(&susfs_mnt_group_ida, GFP_KERNEL))
 			return -ENOMEM;
 		res = ida_get_new_above(&susfs_mnt_group_ida,
 					susfs_mnt_group_start,
@@ -280,7 +279,7 @@ static struct mount *susfs_alloc_unshare_ksu_vfsmnt(const char *name, int old_mn
 			mnt->mnt_devname = kstrdup_const(name,
 							 GFP_KERNEL);
 			if (!mnt->mnt_devname)
-				goto out_free_id;
+				goto out_free_cache;
 		}
 
 #ifdef CONFIG_SMP
