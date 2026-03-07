@@ -206,8 +206,8 @@ void mnt_release_group_id(struct mount *mnt)
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	if (mnt->mnt_group_id >= DEFAULT_KSU_MNT_GROUP_ID) {
 		ida_remove(&susfs_mnt_group_ida, mnt->mnt_group_id);
-		if (susfs_mnt_group_ida > id)
-		    susfs_mnt_group_ida = id;
+		if (mnt_group_ida > id)
+		    mnt_group_ida = id;
 		mnt->mnt_group_id = 0;
 		return;
 	}
