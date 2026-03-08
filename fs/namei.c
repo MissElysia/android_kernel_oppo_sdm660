@@ -1561,6 +1561,12 @@ static struct dentry *lookup_dcache(struct qstr *name, struct dentry *dir,
 
 		*need_lookup = true;
 	}
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	if (dentry && !IS_ERR(dentry) && dentry->d_inode && susfs_is_inode_sus_path(dentry->d_inode)) {
+		dput(dentry);
+		return NULL;
+	}
+#endif
 	return dentry;
 }
 
