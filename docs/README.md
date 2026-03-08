@@ -17,7 +17,7 @@
 
 ## 第三方支援
 
-1. 使用 Sukisu Ultra/Rissu 作為默認 Root 支援.
+1. 無默認 Root 支援.
 2. 合併 5.4 嘅 netbpf 與 BinderFS.
 3. 加入eas 調度.
 4. 使用 Capacity Aware Superset Scheduler+utilization clamping for RT/FAIR task.
