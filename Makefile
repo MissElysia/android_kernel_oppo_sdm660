@@ -1,7 +1,7 @@
 VERSION = 4
 PATCHLEVEL = 4
 SUBLEVEL = 302
-EXTRAVERSION = -Elysia×Raiden_Mei
+EXTRAVERSION = -Cyrene
 NAME = Blurry Fish Butt
 
 # *DOCUMENTATION*
