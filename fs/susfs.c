@@ -148,6 +148,8 @@ void susfs_run_sus_path_loop(void) {
 	struct inode *inode;
 	struct fuse_inode *fi = NULL;
 
+int srcu_idx = srcu_read_lock(&susfs_srcu_sus_path_loop);
+
 	list_for_each_entry_rcu(cursor, &LH_SUS_PATH_LOOP, list) {
 		if (!kern_path(cursor->target_pathname, 0, &path))
 		{
