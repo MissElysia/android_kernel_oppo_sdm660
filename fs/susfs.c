@@ -3,12 +3,12 @@
 #include <linux/fs.h>
 #include <linux/slab.h>
 #include <linux/seq_file.h>
-#include <linux/seqlock.h>
 #include <linux/printk.h>
 #include <linux/namei.h>
 #include <linux/list.h>
 #include <linux/init_task.h>
 #include <linux/spinlock.h>
+#include <linux/seqlock.h>
 #include <linux/stat.h>
 #include <linux/uaccess.h>
 #include <linux/version.h>
@@ -145,8 +145,7 @@ void susfs_run_sus_path_loop(void) {
 	struct path path;
 	struct inode *inode;
 	struct fuse_inode *fi = NULL;
-
-int srcu_idx = srcu_read_lock(&susfs_srcu_sus_path_loop);
+	int srcu_idx = srcu_read_lock(&susfs_srcu_sus_path_loop);
 
 	list_for_each_entry_rcu(cursor, &LH_SUS_PATH_LOOP, list) {
 		if (!kern_path(cursor->target_pathname, 0, &path))
@@ -154,7 +153,6 @@ int srcu_idx = srcu_read_lock(&susfs_srcu_sus_path_loop);
 			inode = d_backing_inode(path.dentry);
 			if (!inode || !inode->i_mapping) {
 				SUSFS_LOGE("inode || inode->i_mapping is NULL\n");
-
 				path_put(&path);
 				continue;
 			}
@@ -171,11 +169,12 @@ int srcu_idx = srcu_read_lock(&susfs_srcu_sus_path_loop);
 			} else {
 				set_bit(AS_FLAGS_SUS_PATH, &inode->i_mapping->flags);
 				SUSFS_LOGI("re-flag AS_FLAGS_SUS_PATH on path '%s', inode->i_ino: '%lu', inode->i_mapping->flags: 0x%lx\n",
+						cursor->target_pathname, inode->i_ino, inode->i_mapping->flags);
 			}
 			path_put(&path);
 		}
 	}
-srcu_read_unlock(&susfs_srcu_sus_path_loop, srcu_idx);
+	srcu_read_unlock(&susfs_srcu_sus_path_loop, srcu_idx);
 }
 
 static inline bool is_i_uid_not_allowed(uid_t i_uid) {
@@ -249,6 +248,7 @@ void susfs_set_hide_sus_mnts_for_non_su_procs(void __user **user_info) {
 		info.err = -EFAULT;
 		goto out_copy_to_user;
 	}
+	
 	WRITE_ONCE(susfs_hide_sus_mnts_for_non_su_procs, info.enabled);
 	SUSFS_LOGI("susfs_hide_sus_mnts_for_non_su_procs: %d\n", info.enabled);
 	info.err = 0;
@@ -305,7 +305,7 @@ static int susfs_mark_inode_sus_kstat(char *target_pathname, struct st_susfs_sus
 	new_entry->target_dev = inode->i_sb->s_dev;
 	SUSFS_LOGI("flagged AS_FLAGS_SUS_KSTAT on pathname: '%s', is_fuse: %d, inode->i_sb->s_dev: %u,  inode->i_ino: %lu, inode->i_mapping->flags: 0x%lx\n",
 				target_pathname, new_entry->is_fuse, inode->i_sb->s_dev, inode->i_ino, inode->i_mapping->flags);
-
+		
 out_path_put_path:
 	path_put(&path);
 	return 0;
@@ -331,7 +331,7 @@ void susfs_add_sus_kstat(void __user **user_info) {
 		goto out_copy_to_user;
 	}
 
-// If it is added statically, check for duplicated entry, and remove it first if so
+	// If it is added statically, check for duplicated entry, and remove it first if so
 	if (info.is_statically) {
 		spin_lock(&susfs_spin_lock_sus_kstat);
 		hash_for_each_possible(SUS_KSTAT_HLIST, tmp_entry, node, info.target_ino) {
@@ -412,36 +412,37 @@ void susfs_update_sus_kstat(void __user **user_info) {
 		goto out_copy_to_user;
 	}
 
-			new_entry = kmalloc(sizeof(struct st_susfs_sus_kstat_hlist), GFP_KERNEL);
-			if (!new_entry) {
-				info.err = -ENOMEM;
-				goto out_copy_to_user;
-			}
+	new_entry = kmalloc(sizeof(struct st_susfs_sus_kstat_hlist), GFP_KERNEL);
+	if (!new_entry) {
+		info.err = -ENOMEM;
+		goto out_copy_to_user;
+	}
+
 
 	spin_lock(&susfs_spin_lock_sus_kstat);
 	hash_for_each_possible(SUS_KSTAT_HLIST, tmp_entry, node, info.target_ino) {
 		if (!strcmp(tmp_entry->info.target_pathname, info.target_pathname)) {
-
 			memcpy(&new_entry->info, &tmp_entry->info, sizeof(tmp_entry->info));
 			new_entry->target_ino = info.target_ino;
 			new_entry->info.target_ino = info.target_ino;
-						hash_del_rcu(&tmp_entry->node);
+			hash_del_rcu(&tmp_entry->node);
 			spin_unlock(&susfs_spin_lock_sus_kstat);
 			synchronize_rcu();
 			kfree(tmp_entry);
 			goto out_add_new_entry;
-			}
-			}
-			info.err = -ENOENT;
+		}
+	}
+	spin_unlock(&susfs_spin_lock_sus_kstat);
+	info.err = -ENOENT;
 	goto out_copy_to_user;
 
 out_add_new_entry:
 	info.err = susfs_mark_inode_sus_kstat(new_entry->info.target_pathname, new_entry);
 	if (info.err) {
 		kfree(new_entry);
-			goto out_copy_to_user;
-		}
-		SUSFS_LOGI("updating target_ino from '%lu' to '%lu' for pathname: '%s' in SUS_KSTAT_HLIST\n",
+		goto out_copy_to_user;
+	}
+	SUSFS_LOGI("updating target_ino from '%lu' to '%lu' for pathname: '%s' in SUS_KSTAT_HLIST\n",
 					new_entry->info.target_ino, info.target_ino, info.target_pathname);
 	spin_lock(&susfs_spin_lock_sus_kstat);
 	hash_add_rcu(SUS_KSTAT_HLIST, &new_entry->node, info.target_ino);
@@ -500,33 +501,30 @@ out_spoof_kstat:
 			SUSFS_LOGI("spoofing kstat for path: %s, target_ino: %lu, target_dev: %u\n",
 					entry->info.target_pathname, target_ino, target_dev);
 			if (entry->info.flags & KSTAT_SPOOF_INO)
-
-			stat->ino = entry->info.spoofed_ino;
+				stat->ino = entry->info.spoofed_ino;
 			if (entry->info.flags & KSTAT_SPOOF_DEV)
 				stat->dev = entry->info.spoofed_dev;
 			if (entry->info.flags & KSTAT_SPOOF_NLINK)
-
-			stat->nlink = entry->info.spoofed_nlink;
+				stat->nlink = entry->info.spoofed_nlink;
 			if (entry->info.flags & KSTAT_SPOOF_SIZE)
-			stat->size = entry->info.spoofed_size;
+				stat->size = entry->info.spoofed_size;
 			if (entry->info.flags & KSTAT_SPOOF_ATIME_TV_SEC)
-			stat->atime.tv_sec = entry->info.spoofed_atime_tv_sec;
+				stat->atime.tv_sec = entry->info.spoofed_atime_tv_sec;
 			if (entry->info.flags & KSTAT_SPOOF_ATIME_TV_NSEC)
-			stat->atime.tv_nsec = entry->info.spoofed_atime_tv_nsec;
+				stat->atime.tv_nsec = entry->info.spoofed_atime_tv_nsec;
 			if (entry->info.flags & KSTAT_SPOOF_MTIME_TV_SEC)
-			stat->mtime.tv_sec = entry->info.spoofed_mtime_tv_sec;
+				stat->mtime.tv_sec = entry->info.spoofed_mtime_tv_sec;
 			if (entry->info.flags & KSTAT_SPOOF_MTIME_TV_NSEC)
-			stat->mtime.tv_nsec = entry->info.spoofed_mtime_tv_nsec;
+				stat->mtime.tv_nsec = entry->info.spoofed_mtime_tv_nsec;
 			if (entry->info.flags & KSTAT_SPOOF_CTIME_TV_SEC)
-			stat->ctime.tv_sec = entry->info.spoofed_ctime_tv_sec;
+				stat->ctime.tv_sec = entry->info.spoofed_ctime_tv_sec;
 			if (entry->info.flags & KSTAT_SPOOF_CTIME_TV_NSEC)
-			stat->ctime.tv_nsec = entry->info.spoofed_ctime_tv_nsec;
+				stat->ctime.tv_nsec = entry->info.spoofed_ctime_tv_nsec;
 			if (entry->info.flags & KSTAT_SPOOF_BLKSIZE)
-			stat->blksize = entry->info.spoofed_blksize;
+				stat->blksize = entry->info.spoofed_blksize;
 			if (entry->info.flags & KSTAT_SPOOF_BLOCKS)
 				stat->blocks = entry->info.spoofed_blocks;
 			rcu_read_unlock();
-
 			return;
 		}
 	}
@@ -575,11 +573,9 @@ out_spoof_kstat:
 			entry->is_fuse == is_fuse)
 		{
 			SUSFS_LOGI("spoofing kstat for target_ino: %lu, target_dev: %u\n", target_ino, target_dev);
-
 			*out_dev = entry->info.spoofed_dev;
 			*out_ino = entry->info.spoofed_ino;
 			rcu_read_unlock();
-
 			return;
 		}
 	}
@@ -636,9 +632,9 @@ void susfs_spoof_uname(struct new_utsname* tmp) {
 	do {
 		seq = read_seqbegin(&susfs_uname_seqlock);
 		if (is_susfs_uname_set) {
-	strncpy(tmp->release, my_uname.release, __NEW_UTS_LEN);
-	strncpy(tmp->version, my_uname.version, __NEW_UTS_LEN);
-}
+			strncpy(tmp->release, my_uname.release, __NEW_UTS_LEN);
+			strncpy(tmp->version, my_uname.version, __NEW_UTS_LEN);
+		}
 	} while (read_seqretry(&susfs_uname_seqlock, seq));
 }
 #endif // #ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
@@ -656,7 +652,6 @@ void susfs_enable_log(void __user **user_info) {
 	WRITE_ONCE(susfs_is_log_enabled, info.enabled);
 
 	if (info.enabled) {
-
 		pr_info("susfs: enable logging to kernel");
 	} else {
 		pr_info("susfs: disable logging to kernel");
@@ -688,11 +683,11 @@ void susfs_set_cmdline_or_bootconfig(void __user **user_info) {
 		info->err = -EFAULT;
 		goto out_copy_to_user;
 	}
-	
+
 	if (*info->fake_cmdline_or_bootconfig == '\0') {
 		info->err = -EINVAL;
 		goto out_copy_to_user;
-	}	
+	}
 
 	if (!fake_cmdline_or_bootconfig) {
 		fake_cmdline_or_bootconfig = (char *)kzalloc(SUSFS_FAKE_CMDLINE_OR_BOOTCONFIG_SIZE, GFP_KERNEL);
@@ -708,6 +703,7 @@ void susfs_set_cmdline_or_bootconfig(void __user **user_info) {
 			SUSFS_FAKE_CMDLINE_OR_BOOTCONFIG_SIZE-1);
 	susfs_is_fake_cmdline_or_bootconfig_set = true;
 	write_sequnlock(&susfs_fake_cmdline_or_bootconfig_seqlock);
+
 	SUSFS_LOGI("fake_cmdline_or_bootconfig is set\n");
 	info->err = 0;
 
@@ -728,10 +724,9 @@ int susfs_spoof_cmdline_or_bootconfig(struct seq_file *m) {
 	do {
 		seq = read_seqbegin(&susfs_fake_cmdline_or_bootconfig_seqlock);
 		if (susfs_is_fake_cmdline_or_bootconfig_set) {
-
-		seq_puts(m, fake_cmdline_or_bootconfig);
+			seq_puts(m, fake_cmdline_or_bootconfig);
 			err = 0;
-	}
+		}
 	} while (read_seqretry(&susfs_fake_cmdline_or_bootconfig_seqlock, seq));
 
 	return err;
@@ -1083,15 +1078,12 @@ static int watch_one_dir(struct watch_dir *wd)
  * synchronize_srcu on the same SRCU struct, causing a permanent deadlock).
  * Cleanup is deferred to a delayed_work that runs outside the SRCU context.
  */
-static int susfs_handle_sdcard_inode_event(struct fsnotify_group *group,
-                                     struct inode *inode,
-                                     struct fsnotify_mark *inode_mark,
-                                     struct fsnotify_mark *vfsmount_mark,
-                                     u32 mask, void *data, int data_type,
-                                     const unsigned char *file_name, u32 cookie)
+static int susfs_handle_sdcard_inode_event(struct fsnotify_mark *mark, u32 mask,
+											struct inode *inode, struct inode *dir,
+											const struct qstr *file_name, u32 cookie)
 {
-	if (!file_name || strlen(file_name) != 7 ||
-	    memcmp(file_name, "Android", 7))
+	if (!file_name || file_name->len != 7 ||
+	    memcmp(file_name->name, "Android", 7))
 		return 0;
 
 	if (test_and_set_bit(0, &sdcard_cleanup_scheduled))
@@ -1104,7 +1096,7 @@ static int susfs_handle_sdcard_inode_event(struct fsnotify_group *group,
 }
 
 static const struct fsnotify_ops fsnotify_ops = {
-	.handle_event = susfs_handle_sdcard_inode_event,
+	.handle_inode_event = susfs_handle_sdcard_inode_event,
 };
 
 static int add_mark_on_inode(struct inode *inode, u32 mask,
@@ -1116,10 +1108,10 @@ static int add_mark_on_inode(struct inode *inode, u32 mask,
 	if (!m)
 		return -ENOMEM;
 
-	fsnotify_init_mark(m, NULL);
+	fsnotify_init_mark(m, g);
 	m->mask = mask;
 
-	if (fsnotify_add_mark(m, g, inode, NULL, 0)) {
+	if (fsnotify_add_inode_mark(m, inode, 0)) {
 		fsnotify_put_mark(m);
 		return -EINVAL;
 	}
