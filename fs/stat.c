@@ -26,10 +26,6 @@
 extern void susfs_generic_fillattr_spoofer(struct inode *inode, struct kstat *stat);
 #endif
 
-#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-	susfs_generic_fillattr_spoofer(inode, stat);
-#endif
-
 void generic_fillattr(struct inode *inode, struct kstat *stat)
 {
 	stat->dev = inode->i_sb->s_dev;
@@ -45,6 +41,9 @@ void generic_fillattr(struct inode *inode, struct kstat *stat)
 	stat->ctime = inode->i_ctime;
 	stat->blksize = i_blocksize(inode);
 	stat->blocks = inode->i_blocks;
+#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
+	susfs_generic_fillattr_spoofer(inode, stat);
+#endif
 }
 
 EXPORT_SYMBOL(generic_fillattr);
@@ -68,8 +67,7 @@ int vfs_getattr_nosec(struct path *path, struct kstat *stat)
 	if (inode->i_op->getattr)
 #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
 	{
-		int err = inode->i_op->getattr(path, stat, request_mask,
-					    query_flags);
+		int err = inode->i_op->getattr(path->mnt, path->dentry, stat);
 		if (!err)
 			susfs_generic_fillattr_spoofer(inode, stat);
 		return err;
