@@ -1605,14 +1605,16 @@ retry:
 	{
 		if (!IS_ERR(dentry) && !found_sus_path && dentry->d_inode && susfs_is_inode_sus_path(dentry->d_inode)) {
 			dput(dentry);
-			dentry = lookup_dcache(&susfs_fake_qstr_name, base, flags, &need_lookup);
+			dentry = lookup_dcache(&susfs_fake_qstr_name, base, flags);
 			found_sus_path = true;
 			goto retry;
 		}
-		return dentry;
+ 		return dentry;
+	}
 #else
 		return dentry;
 #endif
+
 
 	return lookup_real(base->d_inode, dentry, flags);
 }
