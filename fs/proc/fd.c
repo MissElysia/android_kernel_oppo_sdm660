@@ -100,8 +100,7 @@ out_kfree:
 orig_flow:
 	seq_printf(m, "pos:\t%lli\nflags:\t0%o\nmnt_id:\t%i\nino:\t%lu\n",
 			(long long)file->f_pos, f_flags,
-			mnt->mnt_id,
-			file_inode(file)->i_ino);
+			mnt->mnt_id);
 bypass_orig_flow:
 #else
 	seq_printf(m, "pos:\t%lli\nflags:\t0%o\nmnt_id:\t%i\n",

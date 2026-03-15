@@ -1561,12 +1561,6 @@ static struct dentry *lookup_dcache(struct qstr *name, struct dentry *dir,
 
 		*need_lookup = true;
 	}
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-	if (dentry && !IS_ERR(dentry) && dentry->d_inode && susfs_is_inode_sus_path(dentry->d_inode)) {
-		dput(dentry);
-		return NULL;
-	}
-#endif
 	return dentry;
 }
 
@@ -1601,9 +1595,24 @@ static struct dentry *__lookup_hash(struct qstr *name,
 	bool need_lookup;
 	struct dentry *dentry;
 	dentry = lookup_dcache(name, base, flags, &need_lookup);
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	bool found_sus_path = false;
+retry:
+#endif
 
 	if (!need_lookup)
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	{
+		if (!IS_ERR(dentry) && !found_sus_path && dentry->d_inode && susfs_is_inode_sus_path(dentry->d_inode)) {
+			dput(dentry);
+			dentry = lookup_dcache(&susfs_fake_qstr_name, base, flags);
+			found_sus_path = true;
+			goto retry;
+		}
 		return dentry;
+#else
+		return dentry;
+#endif
 
 	return lookup_real(base->d_inode, dentry, flags);
 }
