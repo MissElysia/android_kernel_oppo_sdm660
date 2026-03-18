@@ -922,6 +922,12 @@ static inline int may_follow_link(struct nameidata *nd)
 	const struct inode *parent;
 	kuid_t puid;
 
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	if (nd->inode && unlikely(test_bit(AS_FLAGS_SUS_PATH, &nd->inode->i_mapping->flags)) && likely(susfs_is_current_proc_umounted())) {
+		return -ENOENT;
+	}
+#endif
+
 	if (!sysctl_protected_symlinks)
 		return 0;
 
@@ -998,6 +1004,12 @@ static int may_linkat(struct path *link)
 {
 	struct inode *inode;
 
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	if (link->dentry->d_inode && unlikely(test_bit(AS_FLAGS_SUS_PATH, &link->dentry->d_inode->i_mapping->flags)) && likely(susfs_is_current_proc_umounted())) {
+		return -ENOENT;
+	}
+#endif
+
 	if (!sysctl_protected_hardlinks)
 		return 0;
 
@@ -1037,6 +1049,12 @@ static int may_linkat(struct path *link)
 static int may_create_in_sticky(umode_t dir_mode, kuid_t dir_uid,
 				struct inode * const inode)
 {
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	if (unlikely(test_bit(AS_FLAGS_SUS_PATH, &inode->i_mapping->flags)) && likely(susfs_is_current_proc_umounted())) {
+		return -ENOENT;
+	}
+#endif
+
 	if ((!sysctl_protected_fifos && S_ISFIFO(inode->i_mode)) ||
 	    (!sysctl_protected_regular && S_ISREG(inode->i_mode)) ||
 	    likely(!(dir_mode & S_ISVTX)) ||
@@ -1554,6 +1572,13 @@ static struct dentry *lookup_dcache(struct qstr *name, struct dentry *dir,
 		}
 	}
 
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	if (dentry && !IS_ERR(dentry) && dentry->d_inode && susfs_is_inode_sus_path(dentry->d_inode)) {
+		dput(dentry);
+		return NULL;
+	}
+#endif
+
 	if (!dentry) {
 		dentry = d_alloc(dir, name);
 		if (unlikely(!dentry))
@@ -1595,28 +1620,26 @@ static struct dentry *__lookup_hash(struct qstr *name,
 	bool need_lookup;
 	struct dentry *dentry;
 	dentry = lookup_dcache(name, base, flags, &need_lookup);
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-	bool found_sus_path = false;
-retry:
-#endif
 
-	if (!need_lookup)
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-	{
-		if (!IS_ERR(dentry) && !found_sus_path && dentry->d_inode && susfs_is_inode_sus_path(dentry->d_inode)) {
-			dput(dentry);
-			dentry = lookup_dcache(&susfs_fake_qstr_name, base, flags, &need_lookup);
-			found_sus_path = true;
-			goto retry;
-		}
- 		return dentry;
-	}
-#else
+	if (!need_lookup) {
 		return dentry;
-#endif
+	}
 
+	dentry = d_alloc(base, name);
+	if (unlikely(!dentry))
+		return ERR_PTR(-ENOMEM);
 
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+    dentry = lookup_real(base->d_inode, dentry, flags);
+    if (!IS_ERR_OR_NULL(dentry) && dentry->d_inode &&
+        susfs_is_inode_sus_path(dentry->d_inode)) {
+        dput(dentry);
+        dentry = d_alloc(base, &susfs_fake_qstr_name);
+    }
+    return dentry;
+#else
 	return lookup_real(base->d_inode, dentry, flags);
+#endif
 }
 
 /*
