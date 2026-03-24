@@ -700,7 +700,7 @@ void susfs_set_cmdline_or_bootconfig(void __user **user_info) {
 	write_seqlock(&susfs_fake_cmdline_or_bootconfig_seqlock);
 	strncpy(fake_cmdline_or_bootconfig,
 			info->fake_cmdline_or_bootconfig,
-			SUSFS_FAKE_CMDLINE_OR_BOOTCONFIG_SIZE-1);
+			SUSFS_FAKE_CMDLINE_OR_BOOTCONFIG_SIZE - 1);
 	susfs_is_fake_cmdline_or_bootconfig_set = true;
 	write_sequnlock(&susfs_fake_cmdline_or_bootconfig_seqlock);
 
@@ -930,12 +930,6 @@ struct filename *susfs_open_redirect_spoof_do_sys_openat(struct inode *inode) {
 			new_filename = getname_kernel(entry->info.redirected_pathname);
 			srcu_read_unlock(&susfs_srcu_open_redirect, srcu_idx);
 			return new_filename;
-			}
-			putname(*tmp_filename);
-			*tmp_filename = new_filename;
-
-			err = 0;
-			goto out_srcu_read_unlock;
 		}
 	}
 out_srcu_read_unlock:
@@ -1366,7 +1360,7 @@ static int add_mark_on_inode(struct inode *inode, u32 mask,
 	if (!m)
 		return -ENOMEM;
 
-	fsnotify_init_mark(m, NULL);
+	fsnotify_init_mark(m, g);
 	m->mask = mask;
 
 	if (fsnotify_add_mark(m, g, inode, NULL, 0)) {
