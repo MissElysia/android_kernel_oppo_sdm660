@@ -716,6 +716,7 @@ asmlinkage long compat_sys_fanotify_mark(int, unsigned int, __u32, __u32,
 #else
 
 #define is_compat_task() (0)
+static include bool in_compat_syscall(void) { return false; }
 
 #endif /* CONFIG_COMPAT */
 #endif /* _LINUX_COMPAT_H */
