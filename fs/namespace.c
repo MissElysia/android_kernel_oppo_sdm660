@@ -32,7 +32,7 @@
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 extern bool susfs_is_current_ksu_domain(void);
-extern bool susfs_is_sdcard_android_data_decrypted __read_mostly;
+extern struct static_key_false susfs_set_sdcard_android_data_decrypted_key_false;
 
 static int susfs_mnt_group_start = DEFAULT_KSU_MNT_GROUP_ID;
 
@@ -1166,10 +1166,12 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	// - We will just stop checking for ksu process if /sdcard/Android is accessible,
 	//   for the sake of performance
-	if (!READ_ONCE(susfs_is_sdcard_android_data_decrypted) && susfs_is_current_ksu_domain()) {
+	if (static_branch_unlikely(&susfs_set_sdcard_android_data_decrypted_key_false)) {
+		if (susfs_is_current_ksu_domain()) {
 		mnt = susfs_alloc_non_unshare_ksu_vfsmnt(name);
 		goto bypass_orig_flow;
 	}
+}
 #endif
 
 	mnt = alloc_vfsmnt(name);
@@ -1220,10 +1222,7 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 	bool is_mnt_ksu_unshared = false;
 	// - We will just stop checking for ksu process if /sdcard/Android is accessible,
 	//   for the sake of performance
-	if (READ_ONCE(susfs_is_sdcard_android_data_decrypted)) {
-		goto skip_checking_for_ksu_proc;
-	}
-
+	if (static_branch_unlikely(&susfs_set_sdcard_android_data_decrypted_key_false)) {
 	// - If /sdcard/Android is still not accessible, we keep checking for mounts
 	//   mounted by ksu process
 	if (susfs_is_current_ksu_domain()) {
@@ -1240,8 +1239,8 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 		mnt = susfs_alloc_non_unshare_ksu_vfsmnt(old->mnt_devname);
 		goto bypass_orig_flow;
 	}
+}
 
-skip_checking_for_ksu_proc:
 	// - We keep checking all processes and if old->mnt_id >= DEFAULT_KSU_MNT_ID,
 	//   go assign fake mnt_id starting with DEFAULT_KSU_MNT_ID
 	if (old->mnt_id >= DEFAULT_KSU_MNT_ID) {
