@@ -1624,6 +1624,13 @@ retry:
 	if (unlikely(dentry) && !IS_ERR(dentry) && dentry->d_inode && !found_sus_path && susfs_is_inode_sus_path(dentry->d_inode)) {
 		if (!(flags & LOOKUP_RCU))
 			dput(dentry);
+		// - Just in case if an user app has been granted full file access and
+		//   it is trying to find the fuse sus path with the create flag, then
+		//   at least we can prevent the fake qstr file from from being created,
+		//   although it is futile to do this, it is better than doing nothing.
+		if (dentry->d_inode->i_sb->s_magic == FUSE_SUPER_MAGIC &&
+			(flags & (LOOKUP_CREATE | LOOKUP_EXCL)))
+			return ERR_PTR(-EACCES);
 			dentry = lookup_dcache(&susfs_fake_qstr_name, base, flags, &need_lookup);
 			found_sus_path = true;
 			goto retry;

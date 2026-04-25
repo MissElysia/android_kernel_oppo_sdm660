@@ -416,7 +416,7 @@ static int debug_handle_input_handle_event(unsigned int *type, unsigned int *cod
 #endif
 
 #ifdef CONFIG_KSU_SUSFS
-extern struct static_key_false ksu_input_hook_key_false;
+extern struct static_key_true ksu_is_input_hook_enabled;
 extern __attribute__((cold)) int ksu_handle_input_handle_event(
 			unsigned int *type, unsigned int *code, int *value);
 #endif
@@ -432,7 +432,7 @@ if (unlikely(debug_input_hook))
 	disposition = input_get_disposition(dev, type, code, &value);
 
 #ifdef CONFIG_KSU_SUSFS
-	if (static_branch_unlikely(&ksu_input_hook_key_false))
+	if (static_branch_unlikely(&ksu_is_input_hook_enabled))
 		ksu_handle_input_handle_event(&type, &code, &value);
 #endif
 
