@@ -38,9 +38,6 @@ static int susfs_mnt_group_start = DEFAULT_KSU_MNT_GROUP_ID;
 
 #define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */
 
-static DEFINE_IDA(susfs_mnt_id_ida);
-static DEFINE_IDA(susfs_mnt_group_ida);
-
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 /* Maximum number of mounts in a mount namespace */
@@ -137,19 +134,8 @@ static void mnt_free_id(struct mount *mnt)
 {
 	int id = mnt->mnt_id;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	if (mnt->mnt_id >= DEFAULT_KSU_MNT_ID) {
-		ida_remove(&susfs_mnt_id_ida, mnt->mnt_id);
-	    spin_lock(&mnt_id_lock);
-	    ida_remove(&mnt_id_ida, id);
-	    if (mnt_id_start > id)
-		    mnt_id_start = id;
-	    spin_unlock(&mnt_id_lock);
+	if (mnt->mnt.mnt_flags & VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT)
 		return;
-	}
-
-	if (mnt->mnt.mnt_flags & VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT) {
-		return;
-	}
 
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	spin_lock(&mnt_id_lock);
@@ -176,9 +162,9 @@ static int mnt_alloc_group_id(struct mount *mnt)
 	 *   another ida nor hook the mnt_release_group_id() function.
 	 */
 	if (susfs_is_current_ksu_domain()) {
-		if (!ida_pre_get(&susfs_mnt_group_ida, GFP_KERNEL))
+		if (!ida_pre_get(&mnt_group_ida, GFP_KERNEL))
 			return -ENOMEM;
-		res = ida_get_new_above(&susfs_mnt_group_ida,
+		res = ida_get_new_above(&mnt_group_ida,
 					susfs_mnt_group_start,
 					&mnt->mnt_group_id);
 		if (!res)
@@ -203,15 +189,6 @@ static int mnt_alloc_group_id(struct mount *mnt)
 void mnt_release_group_id(struct mount *mnt)
 {
 	int id = mnt->mnt_group_id;
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	if (mnt->mnt_group_id >= DEFAULT_KSU_MNT_GROUP_ID) {
-		ida_remove(&susfs_mnt_group_ida, mnt->mnt_group_id);
-		if (susfs_mnt_group_start > id)
-		    susfs_mnt_group_start = id;
-		mnt->mnt_group_id = 0;
-		return;
-	}
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	ida_remove(&mnt_group_ida, id);
 	if (mnt_group_start > id)
 		mnt_group_start = id;
@@ -324,14 +301,14 @@ static struct mount *susfs_alloc_non_unshare_ksu_vfsmnt(const char *name)
 	int res;
 
 	if (mnt) {
-		if (!ida_pre_get(&susfs_mnt_id_ida, GFP_KERNEL))
+		if (!ida_pre_get(&mnt_id_ida, GFP_KERNEL))
 			return ERR_PTR(-ENOMEM);
-		res = ida_get_new_above(&susfs_mnt_id_ida,
+		res = ida_get_new_above(&mnt_id_ida,
 					DEFAULT_KSU_MNT_ID,
 					&mnt->mnt_group_id);
-		if (res < 0) {
+		if (res < 0)
 			goto out_free_cache;
-		}
+
 		mnt->mnt_id = res;
 
 		if (name) {
@@ -1278,9 +1255,8 @@ bypass_orig_flow:
 	mnt->mnt.mnt_flags &= ~(MNT_WRITE_HOLD|MNT_MARKED|MNT_INTERNAL);
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	if (unlikely(is_mnt_ksu_unshared)) {
+	if (unlikely(is_mnt_ksu_unshared))
 		mnt->mnt.mnt_flags |= VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT;
-	}
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 	/* Don't allow unprivileged users to change mount flags */
