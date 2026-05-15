@@ -5933,7 +5933,7 @@ abort_change:
 }
 
 #ifdef CONFIG_KSU_SUSFS
-static int my_setprocattr(const char *name, void *value, size_t size)
+static int my_setprocattr(struct task_struct *p, char *name, void *value, size_t size)
 {
 	u32 mysid = current_sid(), sid = 0;
 	int error;
@@ -5943,11 +5943,10 @@ static int my_setprocattr(const char *name, void *value, size_t size)
 	if (likely(current_uid().val < 10000 ||
 				!ksu_selinux_hide_running ||
 				strcmp(name, "current")))
-		return selinux_setprocattr(name, value, size);
+		return selinux_setprocattr(p, name, value, size);
 
-	error = avc_has_perm(&selinux_state,
-				     mysid, mysid, SECCLASS_PROCESS,
-				     PROCESS__SETCURRENT, NULL);
+	error = avc_has_perm(mysid, mysid, SECCLASS_PROCESS,
+			     PROCESS__SETCURRENT, NULL);
 
 	if (error)
 		return error;
@@ -5959,13 +5958,12 @@ static int my_setprocattr(const char *name, void *value, size_t size)
 			size--;
 		}
 
-		error = security_context_to_sid(&fake_state, value, size,
-						&sid, GFP_KERNEL);
+		error = security_context_to_sid(value, size, &sid, GFP_KERNEL);
 		if (error)
 			return error;
 	}
 
-	return selinux_setprocattr(name, value, size);
+	return selinux_setprocattr(p, name, value, size);
 }
 #endif // #ifdef CONFIG_KSU_SUSFS
 
