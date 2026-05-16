@@ -49,7 +49,6 @@ static inline u32 current_sid(void)
 }
 
 #ifdef CONFIG_KSU_SUSFS
-extern struct selinux_state fake_state;
 extern bool ksu_selinux_hide_running __read_mostly;
 #endif // #ifdef CONFIG_KSU_SUSFS
 
@@ -626,8 +625,7 @@ static ssize_t my_write_context(struct file *file, char *buf, size_t size)
 	if (likely(current_uid().val < 10000 || !ksu_selinux_hide_running))
 		return sel_write_context(file, buf, size);
 
-	length = avc_has_perm(&selinux_state,
-			      current_sid(), SECINITSID_SECURITY,
+	length = avc_has_perm(current_sid(), SECINITSID_SECURITY,
 			      SECCLASS_SECURITY, SECURITY__CHECK_CONTEXT, NULL);
 	if (length)
 		goto out;
@@ -834,8 +832,7 @@ static ssize_t my_write_access(struct file *file, char *buf, size_t size)
 	if (likely(current_uid().val < 10000 || !ksu_selinux_hide_running))
 		return sel_write_access(file, buf, size);
 
-	length = avc_has_perm(&selinux_state,
-			      current_sid(), SECINITSID_SECURITY,
+	length = avc_has_perm(current_sid(), SECINITSID_SECURITY,
 			      SECCLASS_SECURITY, SECURITY__COMPUTE_AV, NULL);
 	if (length)
 		goto out;
@@ -854,7 +851,7 @@ static ssize_t my_write_access(struct file *file, char *buf, size_t size)
 	if (sscanf(buf, "%s %s %hu", scon, tcon, &tclass) != 3)
 		goto out;
 
-	length = security_context_str_to_sid(scon, &ssid、);
+	length = security_context_str_to_sid(scon, &ssid, GFP_KERNEL);
 	if (length)
 		goto out;
 
