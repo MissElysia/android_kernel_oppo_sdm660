@@ -41,6 +41,13 @@
 #include "objsec.h"
 #include "conditional.h"
 
+/* Add current_sid helper for 4.4 kernel */
+static inline u32 current_sid(void)
+{
+    const struct task_security_struct *tsec = current_security();
+    return tsec->sid;
+}
+
 #ifdef CONFIG_KSU_SUSFS
 extern struct selinux_state fake_state;
 extern bool ksu_selinux_hide_running __read_mostly;
@@ -625,7 +632,7 @@ static ssize_t my_write_context(struct file *file, char *buf, size_t size)
 	if (length)
 		goto out;
 
-	length = security_context_to_sid(&fake_state, buf, size, &sid, GFP_KERNEL);
+	length = security_context_to_sid(page, size, &sid);
 	if (length)
 		goto out;
 
@@ -847,15 +854,15 @@ static ssize_t my_write_access(struct file *file, char *buf, size_t size)
 	if (sscanf(buf, "%s %s %hu", scon, tcon, &tclass) != 3)
 		goto out;
 
-	length = security_context_str_to_sid(&fake_state, scon, &ssid, GFP_KERNEL);
+	length = security_context_str_to_sid(scon, &ssid);
 	if (length)
 		goto out;
 
-	length = security_context_str_to_sid(&fake_state, tcon, &tsid, GFP_KERNEL);
+	length = security_context_str_to_sid(tcon, &tsid);
 	if (length)
 		goto out;
 
-	security_compute_av_user(&fake_state, ssid, tsid, tclass, &avd);
+	security_compute_av_user(ssid, tsid, tclass, &avd);
 
 	length = scnprintf(buf, SIMPLE_TRANSACTION_LIMIT,
 			  "%x %x %x %x %u %x",
