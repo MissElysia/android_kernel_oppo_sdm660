@@ -632,11 +632,11 @@ static ssize_t my_write_context(struct file *file, char *buf, size_t size)
 	if (length)
 		goto out;
 
-	length = security_context_to_sid(page, size, &sid);
+	length = security_context_to_sid(buf, size, &sid, GFP_KERNEL);
 	if (length)
 		goto out;
 
-	length = security_sid_to_context(&fake_state, sid, &canon, &len);
+	length = security_sid_to_context(sid, &canon, &len);
 	if (length)
 		goto out;
 
@@ -854,11 +854,11 @@ static ssize_t my_write_access(struct file *file, char *buf, size_t size)
 	if (sscanf(buf, "%s %s %hu", scon, tcon, &tclass) != 3)
 		goto out;
 
-	length = security_context_str_to_sid(scon, &ssid);
+	length = security_context_str_to_sid(scon, &ssid、);
 	if (length)
 		goto out;
 
-	length = security_context_str_to_sid(tcon, &tsid);
+	length = security_context_str_to_sid(tcon, &tsid, GFP_KERNEL);
 	if (length)
 		goto out;
 
