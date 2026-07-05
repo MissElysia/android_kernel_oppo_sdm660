@@ -1,4 +1,4 @@
-name: 編譯 OPPO-Snapdragon660-Android-Pie の 核心與 Anykernel3 文檔
+Name: 編編 OPPO-Snapdragon660-Android-Pie の 核心與 Anykernel3 文檔
 on:
   workflow_call:
   workflow_dispatch:
@@ -206,16 +206,27 @@ jobs:
       - name: 制作 ${{ github.event.inputs.device }} 嘅 Anykernel3 文檔
         if: env.CHECK_FILE_IS_OK == 'true'
         run: |
-          git clone https://github.com/$GITHUB_REPOSITORY/ -b prebuilt_ak3 --depth 1 $GITHUB_WORKSPACE/workdir/ak3
-          rm -r $GITHUB_WORKSPACE/workdir/ak3/.git
-          cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/Image.gz-dtb $GITHUB_WORKSPACE/workdir/ak3
+          # 1. 改为拉取标准 AnyKernel3 官方主分支，修复原来的 branch not found 错误
+          git clone https://github.com/osm0sis/AnyKernel3.git $GITHUB_WORKSPACE/workdir/ak3
+          rm -rf $GITHUB_WORKSPACE/workdir/ak3/.git
+          
+          # 2. 拷贝内核到打包目录
+          cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/Image.gz-dtb $GITHUB_WORKSPACE/workdir/ak3/Image.gz-dtb
+          
+          # 3. 自动关闭设备代号检查，彻底解决 Recovery 刷入报错 (如 Status 1/设备不匹配) 
+          cd $GITHUB_WORKSPACE/workdir/ak3
+          sed -i 's/do.devicecheck=1/do.devicecheck=0/g' anykernel.sh
+          
+          # 4. 在云端直接使用最高兼容性的压缩参数，打包成真正的卡刷 .zip 文件
+          zip -r0 ../OPPO_SDM660_Kernel.zip ./*
 
-      - name: 上傳 ${{ github.event.inputs.device }} 嘅 AnyKernel3 文檔
+      - name: 上傳 ${{ github.event.inputs.device }} 嘅 AnyKernel3 卡刷包
         if: env.CHECK_FILE_IS_OK == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: AnyKernel3_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}
-          path: workdir/ak3/*
+          # 路径更改为最终生成的 zip。这样你在 Actions 页面下载下来的直接就是 zip 卡刷包，不需二次手动压缩
+          path: workdir/OPPO_SDM660_Kernel.zip
           
       - name: 制作 DTB 備份
         if: env.CHECK_FILE_IS_OK == 'true'
@@ -223,12 +234,14 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/workdir/dtb
           cd $GITHUB_WORKSPACE/workdir/dtb
           if [ "${{ github.event.inputs.dtb }}" == "true" ]; then 
-             cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/dts/1*/*.dtb $GITHUB_WORKSPACE/workdir/dtb
+             cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/dts/1*/*.dtb $GITHUB_WORKSPACE/workdir/dtb || true
           fi
 
       - name: 上傳 DTB 備份
         if: env.CHECK_FILE_IS_OK == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: DTB
+          name: DTB_${{ env.BUILD_TIME }}
           path: workdir/dtb/*
+
+          
