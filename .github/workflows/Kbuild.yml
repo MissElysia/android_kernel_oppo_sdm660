@@ -176,7 +176,6 @@ jobs:
 
       - name: 編譯 ${{ github.event.inputs.device }} 核心
         run: |
-          set -o pipefail
           export KBUILD_BUILD_HOST=Github-Action
           export KBUILD_BUILD_USER=$(echo ${{ github.actor }})
           export ARCH="arm64"
@@ -207,9 +206,8 @@ jobs:
       - name: 制作 ${{ github.event.inputs.device }} 嘅 Anykernel3 文檔
         if: env.CHECK_FILE_IS_OK == 'true'
         run: |
-          git clone https://github.com/osm0sis/AnyKernel3.git --depth 1 $GITHUB_WORKSPACE/workdir/ak3
+          git clone https://github.com/$GITHUB_REPOSITORY/ -b prebuilt_ak3 --depth 1 $GITHUB_WORKSPACE/workdir/ak3
           rm -r $GITHUB_WORKSPACE/workdir/ak3/.git
-          sed -i 's/device.name1=.*/device.name1=R11\ndevice.name2=R11t\ndevice.name3=R11s\ndevice.name4=R11sPlus\ndevice.name5=OPPO R11\ndevice.name6=OPPO R11s/g' $GITHUB_WORKSPACE/workdir/ak3/anykernel.sh
           cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/Image.gz-dtb $GITHUB_WORKSPACE/workdir/ak3
 
       - name: 上傳 ${{ github.event.inputs.device }} 嘅 AnyKernel3 文檔
@@ -234,3 +232,4 @@ jobs:
         with:
           name: DTB
           path: workdir/dtb/*
+          
