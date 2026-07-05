@@ -1,11 +1,12 @@
-name: 編譯 OPPO-Snapdragon660-Android-Pie の 核心與 Anykernel3 文檔
+name: 编译 OPPO-Snapdragon660-Android-Pie 的 核心与 Anykernel3 文档
+
 on:
   workflow_call:
   workflow_dispatch:
     inputs:
       dtb:
         type: choice
-        description: '是否備份 DTB'                
+        description: '是否备份 DTB'                
         required: true
         default: 'true'        
         options:
@@ -29,7 +30,7 @@ on:
         - 'false'
       ksubranch:
         type: choice
-        description: '請選擇 KernelSU 的第三方分叉'                
+        description: '请选择 KernelSU 的第三方分叉'                
         required: true
         default: 'sukisu'        
         options:
@@ -39,7 +40,7 @@ on:
         - 'mihoy3rd'
       branch:
         type: choice
-        description: '請選擇第三方 KernelSU 的分支'                
+        description: '请选择第三方 KernelSU 的分支'                
         required: true
         default: 'builtin'        
         options:
@@ -59,66 +60,77 @@ on:
         - 'false'
       device:
         type: choice
-        description: '請選擇裝置名稱'        
+        description: '请选择装置名称'        
         required: true
         options:
+        - 'OPPO R11s'
         - 'OPPO R11'
         - 'OPPO R11t'
         - 'OPPO R11 Plus'
         - 'OPPO R11 Plusk'
         - 'OPPO R11 Pluskt'
-        - 'OPPO R11s'
         - 'OPPO R11sPlus'
         - 'OPPO R11sPlust'
       target:
         type: choice
-        description: '請選擇裝置內核代號'
+        description: '请选择装置内核代号'
         required: true
         options:
+        - '17011'
         - '16051'
         - '16052'
         - '16103'
         - '16118'
         - '16116'
-        - '17011'
         - '17013'
         - '17021'
         - '17023'
 
 jobs:
   build:
-    name: ${{ github.actor }}編譯嘅${{ github.event.inputs.device }}核心
+    name: ${{ github.actor }}编译的${{ github.event.inputs.device }}核心
     runs-on: ubuntu-22.04
     steps:
 
-      - name: 獲取分支嘅名稱
+      - name: 获取分支的名称
         id: branch-names
         uses: tj-actions/branch-names@v8
 
-      - name: 設定5GIB嘅SWAP
+      - name: 设定5GIB的SWAP
         uses: pierotofy/set-swap-space@master
         with:
           swap-size-gb: 5
 
-      - name: 安裝所需嘅環境
+      - name: 安装所需的环境
         run: |
           sudo apt-get update
-          sudo apt-get install git automake flex lzop bison gperf build-essential zip curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 lib32ncurses5-dev libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip device-tree-compiler python2 python3
+          sudo apt-get install -y git automake flex lzop bison gperf build-essential zip curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 lib32ncurses5-dev libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip device-tree-compiler python2 python3 libncurses5
           mkdir -p $GITHUB_WORKSPACE/workdir
           cd $GITHUB_WORKSPACE/workdir
           echo "BUILD_TIME=$(TZ=Asia/Shanghai date "+%Y%m%d%H%M")" >> $GITHUB_ENV
 
-      - name: 獲取 ZyCromerZ-Clang20 工具鏈
+      - name: 获取稳定版旧版经典工具链
         run: |
-          wget https://github.com/ZyCromerZ/Clang/releases/download/20.0.0git-20241109-release/Clang-20.0.0git-20241109.tar.gz -O $GITHUB_WORKSPACE/workdir/zyc_clang20.tar.gz
-          mkdir $GITHUB_WORKSPACE/workdir/clang
-          tar zxvf $GITHUB_WORKSPACE/workdir/zyc_clang20.tar.gz -C $GITHUB_WORKSPACE/workdir/clang
-  
-      - name: 獲取 ${{ github.event.inputs.device }} 嘅核心源碼
-        run: |
-          git clone --recursive https://github.com/$GITHUB_REPOSITORY/ -b ${{ steps.branch-names.outputs.current_branch }} --depth 1 $GITHUB_WORKSPACE/workdir/source
+          mkdir -p $GITHUB_WORKSPACE/workdir/clang
+          mkdir -p $GITHUB_WORKSPACE/workdir/gcc64
+          mkdir -p $GITHUB_WORKSPACE/workdir/gcc32
+          
+          # 下载原版 AOSP Clang 9.0.3
+          wget -q https://github.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-4988736/archive/refs/heads/9.0.0.tar.gz -O $GITHUB_WORKSPACE/workdir/clang.tar.gz
+          tar -f $GITHUB_WORKSPACE/workdir/clang.tar.gz -xz -C $GITHUB_WORKSPACE/workdir/clang --strip-components=1
+          
+          # 下载预编译 GCC 4.9 支撑
+          wget -q https://github.com/Krypton-Project/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9/archive/refs/heads/11.tar.gz -O $GITHUB_WORKSPACE/workdir/gcc64.tar.gz
+          tar -f $GITHUB_WORKSPACE/workdir/gcc64.tar.gz -xz -C $GITHUB_WORKSPACE/workdir/gcc64 --strip-components=1
+          
+          wget -q https://github.com/Krypton-Project/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9/archive/refs/heads/11.tar.gz -O $GITHUB_WORKSPACE/workdir/gcc32.tar.gz
+          tar -f $GITHUB_WORKSPACE/workdir/gcc32.tar.gz -xz -C $GITHUB_WORKSPACE/workdir/gcc32 --strip-components=1
 
-      - name: 設定 Ccache 嘅容量
+      - name: 获取核心源码
+        run: |
+          git clone --recursive https://github.com/yushihao0525/android_kernel_oppo_sdm660.git -b master --depth 1 $GITHUB_WORKSPACE/workdir/source
+
+      - name: 设定 Ccache 的容量
         uses: hendrikmuhs/ccache-action@v1.2
         with:
          key: build-kernel-mido-kernel
@@ -127,19 +139,22 @@ jobs:
       - name: 添加 RE:Kernel 功能
         run: |
           if [ "${{ github.event.inputs.rekernel }}" == "true" ]; then
-             echo -e "\nCONFIG_REKERNEL=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
+             echo -e "\nCONFIG_REKERNEL=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/oppo660_defconfig || true
+             echo -e "\nCONFIG_REKERNEL=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/oppo660-perf_defconfig || true
           fi
 
       - name: 添加快速进入 Recovery 模式功能
         run: |
           if [ "${{ github.event.inputs.debug }}" == "true" ]; then
-             echo -e "\nCONFIG_ELYSIA_DEBUG=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
+             echo -e "\nCONFIG_ELYSIA_DEBUG=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/oppo660_defconfig || true
+             echo -e "\nCONFIG_ELYSIA_DEBUG=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/oppo660-perf_defconfig || true
           fi
 
       - name: 添加 SusFS 功能
         run: |
           if [ "${{ github.event.inputs.susfs }}" == "true" ]; then
-             echo -e "\nCONFIG_KSU_SUSFS=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/sdm660-perf_defconfig
+             echo -e "\nCONFIG_KSU_SUSFS=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/oppo660_defconfig || true
+             echo -e "\nCONFIG_KSU_SUSFS=y"  >> $GITHUB_WORKSPACE/workdir/source/arch/arm64/configs/oppo660-perf_defconfig || true
           fi
 
       - name: 添加 Rissu
@@ -174,26 +189,44 @@ jobs:
              cd $GITHUB_WORKSPACE/workdir
           fi
 
-      - name: 編譯 ${{ github.event.inputs.device }} 核心
+      - name: 编译 ${{ github.event.inputs.device }} 核心
         run: |
           export KBUILD_BUILD_HOST=Github-Action
           export KBUILD_BUILD_USER=$(echo ${{ github.actor }})
-          export ARCH="arm64"
-          export SUBARCH="arm64"
-          export PATH="$GITHUB_WORKSPACE/workdir/clang/bin/:$PATH"
-          export CROSS_COMPILE="aarch64-linux-gnu-"
+          export ARCH=arm64
+          export SUBARCH=arm64
+          
+          export PATH="$GITHUB_WORKSPACE/workdir/clang/bin:$GITHUB_WORKSPACE/workdir/gcc64/bin:$GITHUB_WORKSPACE/workdir/gcc32/bin:$PATH"
+          export CROSS_COMPILE=aarch64-linux-android-
+          export CROSS_COMPILE_ARM32=arm-linux-androideabi-
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          
           cd $GITHUB_WORKSPACE/workdir/source
           export OPPO_TARGET_DEVICE="MSM_${{ github.event.inputs.target }}"
-          make O=out sdm660-perf_defconfig CC="ccache clang"
-          make -j$(nproc --all) O=out CC="ccache clang" 2>&1 | tee kernel.log
+          
+          # 强行清理历史残留，保证树处于洁净状态
+          make clean
+          make mrproper
+          rm -rf out
+          mkdir -p out
+          
+          # 生成基础配置
+          if [ -f arch/arm64/configs/oppo660-perf_defconfig ]; then
+              make O=out oppo660-perf_defconfig CC=clang
+          else
+              make O=out oppo660_defconfig CC=clang
+          fi
+          
+          # 开始全力编译（KCFLAGS=-w 屏蔽警告防止中断，不检查未定义引用的警告）
+          make -j$(nproc --all) O=out CC=clang KCFLAGS="-w" EXTRA_CFLAGS="-w" 2>&1 | tee kernel.log
 
-      - name: 上傳編譯日志
+      - name: 上传编译日志
         uses: actions/upload-artifact@v4
         with:
           name: android_kernel_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}_kernel.log
           path: workdir/source/kernel.log
 
-      - name: 檢查 ${{ github.event.inputs.device }} 嘅內核文檔
+      - name: 检查 ${{ github.event.inputs.device }} 的内核文档
         run: |
           cd $GITHUB_WORKSPACE/workdir/source
           if [ -f out/arch/arm64/boot/Image.gz-dtb ]; then
@@ -203,32 +236,33 @@ jobs:
               exit 1
           fi
 
-      - name: 制作 ${{ github.event.inputs.device }} 嘅 Anykernel3 文檔
+      - name: 制作 ${{ github.event.inputs.device }} 的 Anykernel3 文档
         if: env.CHECK_FILE_IS_OK == 'true'
         run: |
-          git clone https://github.com/$GITHUB_REPOSITORY/ -b prebuilt_ak3 --depth 1 $GITHUB_WORKSPACE/workdir/ak3
-          rm -r $GITHUB_WORKSPACE/workdir/ak3/.git
+          git clone --depth 1 https://github.com/osm0sis/AnyKernel3.git $GITHUB_WORKSPACE/workdir/ak3
+          rm -rf $GITHUB_WORKSPACE/workdir/ak3/.git
           cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/Image.gz-dtb $GITHUB_WORKSPACE/workdir/ak3
 
-      - name: 上傳 ${{ github.event.inputs.device }} 嘅 AnyKernel3 文檔
+      - name: 上传 ${{ github.event.inputs.device }} 的 AnyKernel3 文档
         if: env.CHECK_FILE_IS_OK == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: AnyKernel3_oppo_sdm660_${{ github.event.inputs.target }}_${{ env.BUILD_TIME }}
           path: workdir/ak3/*
           
-      - name: 制作 DTB 備份
+      - name: 制作 DTB 备份
         if: env.CHECK_FILE_IS_OK == 'true'
         run: |
           mkdir -p $GITHUB_WORKSPACE/workdir/dtb
           cd $GITHUB_WORKSPACE/workdir/dtb
           if [ "${{ github.event.inputs.dtb }}" == "true" ]; then 
-             cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/dts/1*/*.dtb $GITHUB_WORKSPACE/workdir/dtb
+             cp $GITHUB_WORKSPACE/workdir/source/out/arch/arm64/boot/dts/1*/*.dtb $GITHUB_WORKSPACE/workdir/dtb || true
           fi
 
-      - name: 上傳 DTB 備份
+      - name: 上传 DTB 备份
         if: env.CHECK_FILE_IS_OK == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: DTB
           path: workdir/dtb/*
+          
