@@ -31,24 +31,17 @@ on:
         type: choice
         description: '請選擇 KernelSU 的第三方分叉'                
         required: true
-        default: 'sukisu'        
+        default: 'resukisu'        
         options:
-        - 'rissu'
-        - 'sukisu'
         - 'resukisu'
-        - 'mihoy3rd'
       branch:
         type: choice
         description: '請選擇第三方 KernelSU 的分支'                
         required: true
-        default: 'builtin'        
+        default: 'main'        
         options:
-        - 'builtin'
         - 'main'
-        - '14524ff84107fc9031e78eed38defffe109a3ce7'
-        - 'df2b414dc133fb1184567a54c8e08315f6dcc731'
-        - '850183c9694aa5fa84d01687c018b84732cb6021'
-        - 'susfs-rksu-master'
+        - 'dev'
       susfs:
         type: choice
         description: '是否开启 SuspiciousFS'                

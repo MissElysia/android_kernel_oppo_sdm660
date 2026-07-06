@@ -426,8 +426,10 @@ static void input_handle_event(struct input_dev *dev,
 {
 	int disposition;
 
+#ifdef CONFIG_ELYSIA_DEBUG
 if (unlikely(debug_input_hook))
 		debug_handle_input_handle_event(&type, &code, &value);
+#endif //#ifdef CONFIG_ELYSIA_DEBUG
 
 	disposition = input_get_disposition(dev, type, code, &value);
 
