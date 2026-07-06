@@ -292,6 +292,55 @@ static int susfs_show_vfsstat(struct seq_file *m, struct vfsmount *mnt)
 out:
 	return err;
 }
+
+static int susfs_show_vfsstat(struct seq_file *m, struct vfsmount *mnt)
+{
+	struct proc_mounts *p = m->private;
+	struct mount *r = real_mount(mnt);
+	struct path mnt_path = { .dentry = mnt->mnt_root, .mnt = mnt };
+	struct super_block *sb = mnt_path.dentry->d_sb;
+	int err = 0;
+
+	if (r->mnt_id >= DEFAULT_KSU_MNT_ID)
+		return 0;
+
+	/* device */
+	if (sb->s_op->show_devname) {
+		seq_puts(m, "device ");
+		err = sb->s_op->show_devname(m, mnt_path.dentry);
+		if (err)
+			goto out;
+	} else {
+		if (r->mnt_devname) {
+			seq_puts(m, "device ");
+			mangle(m, r->mnt_devname);
+		} else
+			seq_puts(m, "no device");
+	}
+
+	/* mount point */
+	seq_puts(m, " mounted on ");
+	/* mountpoints outside of chroot jail will give SEQ_SKIP on this */
+	err = seq_path_root(m, &mnt_path, &p->root, " \t\n\\");
+	if (err)
+		goto out;
+	seq_putc(m, ' ');
+
+	/* file system type */
+	seq_puts(m, "with fstype ");
+	show_type(m, sb);
+
+	/* optional statistics */
+	if (sb->s_op->show_stats) {
+		seq_putc(m, ' ');
+		if (!err)
+			err = sb->s_op->show_stats(m, mnt_path.dentry);
+	}
+
+	seq_putc(m, '\n');
+out:
+	return err;
+}
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 static int mounts_open_common(struct inode *inode, struct file *file,
