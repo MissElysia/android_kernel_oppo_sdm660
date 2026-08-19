@@ -3608,8 +3608,8 @@ static struct file *path_openat(struct nameidata *nd,
 				set_nameidata(nd, old_dfd, fake_filename);
 				new_s = path_init(nd, flags);
 				while (!(error = link_path_walk(new_s, nd)) &&
-				       (new_s = open_last_lookups(nd, file, op)) != NULL)
-					;
+                       (new_s = (do_last(nd, file, op, &opened) > 0 ? trailing_symlink(nd) : NULL)) != NULL)
+	               ;
 			}
 		}
 #endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
