@@ -350,7 +350,7 @@ char *spoofed_redirected_name = NULL;
 			if (!ret) {
 				pgoff = ((loff_t)vma->vm_pgoff) << PAGE_SHIFT;
 				start = vma->vm_start;
-				end = VMA_PAD_START(vma);
+	            end = vma->vm_end;
 				show_vma_header_prefix(m, start, end, flags, pgoff, dev, ino);
 				seq_pad(m, ' ');
 				if (spoofed_redirected_name)
