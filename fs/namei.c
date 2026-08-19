@@ -47,6 +47,9 @@
 extern bool susfs_is_inode_sus_path(struct inode *inode);
 extern const struct qstr susfs_fake_qstr_name;
 #endif
+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+extern struct filename *susfs_open_redirect_spoof_do_sys_openat(struct inode *inode);
+#endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 
 /* [Feb-1997 T. Schoebel-Theuer]
  * Fundamental changes in the pathname lookup mechanisms (namei)
@@ -3481,11 +3484,33 @@ static int do_tmpfile(struct nameidata *nd, unsigned flags,
 		const struct open_flags *op,
 		struct file *file, int *opened)
 {
+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+	int old_dfd = nd->dfd;
+	struct filename *fake_filename = NULL;
+#endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+
 	static const struct qstr name = QSTR_INIT("/", 1);
 	struct dentry *child;
 	struct inode *dir;
 	struct path path;
 	int error = path_lookupat(nd, flags | LOOKUP_DIRECTORY, &path);
+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+	if ((likely(!error) && old_dfd != -1) &&
+		SUSFS_IS_INODE_OPEN_REDIRECT_WITHOUT_UID_CHECK(path.dentry->d_inode))
+	{
+		fake_filename = susfs_open_redirect_spoof_do_sys_openat(path.dentry->d_inode);
+		if (fake_filename && !IS_ERR(fake_filename)) {
+			path_put(&path);
+			restore_nameidata();
+			set_nameidata(nd, old_dfd, fake_filename);
+			error = path_lookupat(nd, flags | LOOKUP_DIRECTORY, &path);
+			if (unlikely(error)) {
+				putname(fake_filename);
+				return error;
+			}
+		}
+	}
+#endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 	if (unlikely(error))
 		return error;
 	error = mnt_want_write(path.mnt);
@@ -3532,12 +3557,20 @@ out2:
 	mnt_drop_write(path.mnt);
 out:
 	path_put(&path);
+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+	if (fake_filename && !IS_ERR(fake_filename))
+		putname(fake_filename);
+#endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 	return error;
 }
 
 static struct file *path_openat(struct nameidata *nd,
 			const struct open_flags *op, unsigned flags)
 {
+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+	int old_dfd = nd->dfd;
+	struct filename *fake_filename = NULL;
+#endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 	const char *s;
 	struct file *file;
 	int opened = 0;
@@ -3563,12 +3596,35 @@ static struct file *path_openat(struct nameidata *nd,
 		(error = do_last(nd, file, op, &opened)) > 0) {
 		nd->flags &= ~(LOOKUP_OPEN|LOOKUP_CREATE|LOOKUP_EXCL);
 		s = trailing_symlink(nd);
+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+		if (!error && old_dfd != -1 &&
+			SUSFS_IS_INODE_OPEN_REDIRECT_WITHOUT_UID_CHECK(nd->path.dentry->d_inode))
+		{
+			fake_filename = susfs_open_redirect_spoof_do_sys_openat(nd->path.dentry->d_inode);
+			if (fake_filename && !IS_ERR(fake_filename)) {
+				const char *new_s = NULL;
+				terminate_walk(nd);
+				restore_nameidata();
+				set_nameidata(nd, old_dfd, fake_filename);
+				new_s = path_init(nd, flags);
+				while (!(error = link_path_walk(new_s, nd)) &&
+				       (new_s = open_last_lookups(nd, file, op)) != NULL)
+					;
+			}
+		}
+#endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 		if (IS_ERR(s)) {
 			error = PTR_ERR(s);
 			break;
 		}
 	}
 	terminate_walk(nd);
+
+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+	if (fake_filename && !IS_ERR(fake_filename))
+		putname(fake_filename);
+#endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+
 out2:
 	if (!(opened & FILE_OPENED)) {
 		BUG_ON(!error);
@@ -3587,10 +3643,6 @@ out2:
 	}
 	return file;
 }
-
-#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-extern int susfs_open_redirect_spoof_vfs_readlink(struct inode *inode, char __user *buffer, int buflen);
-#endif
 
 struct file *do_filp_open(int dfd, struct filename *pathname,
 		const struct open_flags *op)
@@ -4795,6 +4847,10 @@ out:
 }
 EXPORT_SYMBOL(readlink_copy);
 
+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+extern int susfs_open_redirect_spoof_vfs_readlink(struct inode *inode, char __user *buffer, int buflen);
+#endif
+
 /*
  * A helper for ->readlink().  This should be used *ONLY* for symlinks that
  * have ->follow_link() touching nd only in nd_set_link().  Using (or not
@@ -4820,6 +4876,7 @@ int generic_readlink(struct dentry *dentry, char __user *buffer, int buflen)
 		}
 	}
 #endif
+
 	res = readlink_copy(buffer, buflen, link);
 	if (inode->i_op->put_link)
 		inode->i_op->put_link(inode, cookie);
